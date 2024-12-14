@@ -18,7 +18,9 @@ interface GraphQLResponse {
       edges: Array<{
         node: {
           app: {
+            tags: string[];
             app: {
+              imgUrl: string;
               category: {
                 name: string;
                 description: string;
@@ -44,6 +46,7 @@ interface GraphQLResponse {
                 value: string;
               };
             };
+            value: string;
           };
         };
       }>;
@@ -85,7 +88,9 @@ async function fetchTransactionsFromZapper(address: string) {
             edges {
               node {
                 app {
+                  tags
                   app {
+                    imgUrl
                     category {
                       name
                       description
@@ -105,12 +110,27 @@ async function fetchTransactionsFromZapper(address: string) {
                     displayName {
                       value
                     }
+                    avatar {
+                      value {
+                        ... on AvatarUrl {
+                          url
+                        }
+                      }
+                    }
                   }
                   fromUser {
                     displayName {
                       value
                     }
+                    avatar {
+                      value {
+                        ... on AvatarUrl {
+                          url
+                        }
+                      }
+                    }
                   }
+                  value
                 }
               }
             }
@@ -302,7 +322,13 @@ export async function POST(request: Request) {
 
     // Check if we have cached raw transactions
     const rawCacheKey = `wrapped-2024-raw/${address.toLowerCase()}.json`;
-    let transactions = await getFromS3Cache(rawCacheKey);
+    let transactions;
+    
+    try {
+      transactions = await getFromS3Cache(rawCacheKey);
+    } catch (error) {
+      console.error('Error getting transactions from S3:', error);
+    }
     
     if (!transactions) {
       // Fetch new data from Zapper

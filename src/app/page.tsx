@@ -167,6 +167,7 @@ export default function Home() {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Enter Ethereum address"
+              autoComplete="off"
               className="flex-1 p-4 border rounded-xl text-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
             <button
