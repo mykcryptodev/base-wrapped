@@ -97,26 +97,101 @@ function Card({ item }: { item: CardItem }) {
   return <AnalysisCard item={item} />;
 }
 
+interface LoadingState {
+  status: 'fetching' | 'analyzing' | 'complete';
+  message: string;
+  step: number;
+  totalSteps: number;
+  progress?: {
+    current: number;
+    total: number;
+  };
+}
+
 export default function Home() {
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [error, setError] = useState('');
+
+  const pollForResults = async (address: string) => {
+    try {
+      const data = await analyzeWrapped(address);
+      
+      if (data.status === 'complete') {
+        setAnalysis(data.analysis);
+        setLoadingState(null);
+        setLoading(false);
+        return;
+      }
+
+      // Update loading state
+      setLoadingState({
+        status: data.status,
+        message: data.message,
+        step: data.step,
+        totalSteps: data.totalSteps
+      });
+
+      // Poll again in 5 seconds
+      setTimeout(() => pollForResults(address), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setLoading(false);
+      setLoadingState(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setAnalysis(null);
     
-    try {
-      const data = await analyzeWrapped(address);
-      setAnalysis(data.analysis);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setLoading(false);
-    }
+    pollForResults(address);
   };
+
+  function LoadingCard() {
+    const isAnalyzing = loadingState?.status === 'analyzing';
+    const progress = loadingState?.progress;
+    
+    // Calculate the overall progress percentage
+    const progressPercentage = progress 
+      ? ((loadingState?.step - 1) / loadingState?.totalSteps * 100) + 
+        (progress.current / progress.total * (100 / loadingState?.totalSteps))
+      : ((loadingState?.step || 0) / (loadingState?.totalSteps || 1) * 100);
+    
+    return (
+      <div className="analysis-card min-h-[400px] flex flex-col items-center justify-center text-center px-8">
+        <div className="mb-8">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">
+          {loadingState?.message || 'Loading...'}
+        </h2>
+        <div className="w-full max-w-xs bg-gray-200 rounded-full h-2 mb-4">
+          <div 
+            className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+            style={{ width: `${progressPercentage}%` }}
+          ></div>
+        </div>
+        <p className="text-gray-600 mb-4">
+          Step {loadingState?.step} of {loadingState?.totalSteps}
+          {progress && (
+            <span className="ml-2">
+              (Chunk {progress.current} of {progress.total})
+            </span>
+          )}
+        </p>
+        {isAnalyzing && (
+          <p className="text-sm text-gray-500 mt-2">
+            You can bookmark this page and come back later. Your results will be ready when you return.
+          </p>
+        )}
+      </div>
+    );
+  }
 
   // Create an array with title cards and analysis items
   const allItems: CardItem[] = analysis ? [
@@ -187,7 +262,8 @@ export default function Home() {
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Enter Ethereum address"
               autoComplete="off"
-              className="flex-1 p-4 border rounded-xl text-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              disabled={loading}
+              className="flex-1 p-4 border rounded-xl text-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-50"
             />
             <button
               type="submit"
@@ -205,25 +281,31 @@ export default function Home() {
           </div>
         )}
 
-        {analysis && (
-          <div className="max-w-md mx-auto">
-            <Swiper
-              effect={'cards'}
-              grabCursor={true}
-              modules={[EffectCards]}
-              className="h-[500px]"
-            >
-              {allItems.map((item, index) => (
-                <SwiperSlide key={index}>
-                  <Card item={item} />
-                </SwiperSlide>
-              ))}
-            </Swiper>
-            <div className="text-center mt-6 text-gray-500">
-              Swipe to see more insights
-            </div>
-          </div>
-        )}
+        <div className="max-w-md mx-auto">
+          {loading && !analysis && (
+            <LoadingCard />
+          )}
+
+          {analysis && (
+            <>
+              <Swiper
+                effect={'cards'}
+                grabCursor={true}
+                modules={[EffectCards]}
+                className="h-[500px]"
+              >
+                {allItems.map((item, index) => (
+                  <SwiperSlide key={index}>
+                    <Card item={item} />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+              <div className="text-center mt-6 text-gray-500">
+                Swipe to see more insights
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </main>
   );

@@ -12,6 +12,15 @@ const openai = new OpenAI({
 // Assistant ID for Base Wrapped
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID;
 
+// Add a simple in-memory lock mechanism
+export const activeAnalyses = new Set<string>();
+
+// Track analysis progress
+export const analysisProgress = new Map<string, {
+  currentChunk: number;
+  totalChunks: number;
+}>();
+
 interface GraphQLResponse {
   data: {
     accountsTimeline: {
@@ -59,7 +68,7 @@ interface GraphQLResponse {
   };
 }
 
-function isValidApiKey(request: Request): boolean {
+export function isValidApiKey(request: Request): boolean {
   const apiKey = request.headers.get('x-api-key');
   const validApiKey = process.env.API_ROUTE_SECRET;
   
@@ -71,13 +80,13 @@ function isValidApiKey(request: Request): boolean {
   return apiKey === validApiKey;
 }
 
-async function fetchTransactionsFromZapper(address: string) {
+export async function fetchTransactionsFromZapper(address: string) {
   const allTransactions = [];
   let hasNextPage = true;
   let cursor = null;
-  const TWO_MONTHS_AGO = new Date();
-  TWO_MONTHS_AGO.setMonth(TWO_MONTHS_AGO.getMonth() - 2);
-  const PERIOD_START = TWO_MONTHS_AGO.getTime();
+  const SIX_MONTHS_AGO = new Date();
+  SIX_MONTHS_AGO.setMonth(SIX_MONTHS_AGO.getMonth() - 6);
+  const PERIOD_START = SIX_MONTHS_AGO.getTime();
   const PERIOD_END = new Date().getTime();
 
   while (hasNextPage) {
@@ -147,7 +156,7 @@ async function fetchTransactionsFromZapper(address: string) {
         isSigner: true,
         realtimeInterpretation: false,
         network: "BASE_MAINNET",
-        first: 50,
+        first: 100,
         after: cursor
       }
     };
@@ -205,25 +214,7 @@ const s3Client = new S3Client({
 
 const BUCKET_NAME = process.env.S3_BUCKET_NAME!;
 
-async function getFromS3Cache(key: string) {
-  try {
-    const command = new GetObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: key,
-    });
-    
-    const response = await s3Client.send(command);
-    if (response.Body) {
-      const str = await response.Body.transformToString();
-      return JSON.parse(str);
-    }
-  } catch (error) {
-    console.log('Error reading from S3:', error);
-    return null;
-  }
-}
-
-async function saveToS3Cache(key: string, data: unknown) {
+export async function saveToS3Cache(key: string, data: unknown) {
   try {
     const command = new PutObjectCommand({
       Bucket: BUCKET_NAME,
@@ -239,50 +230,124 @@ async function saveToS3Cache(key: string, data: unknown) {
   }
 }
 
-async function getAnalysisFromOpenAI(transactions: unknown, address: string) {
+// New function to chunk transactions
+function chunkTransactions(transactions: any[], chunkSize = 10) {
+  const chunks = [];
+  for (let i = 0; i < transactions.length; i += chunkSize) {
+    chunks.push(transactions.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
+
+// Modified function to analyze chunks
+async function analyzeTransactionChunk(chunk: any, thread: any, context: string, index: number, totalChunks: number) {
+  console.log(`
+    
+    
+    ====ANALAZING A CHUNK ${index} of ${totalChunks}====
+
+
+
+    `)
+  await openai.beta.threads.messages.create(thread.id, {
+    role: "user",
+    content: `Context from previous transactions: ${context}\n\nNew transactions to analyze: ${JSON.stringify(chunk)}`
+  });
+
+  const run = await openai.beta.threads.runs.create(thread.id, {
+    assistant_id: ASSISTANT_ID!,
+  });
+
+  let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+  while (runStatus.status !== 'completed') {
+    if (runStatus.status === 'failed') {
+      throw new Error('Assistant run failed');
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+  }
+
+  const messages = await openai.beta.threads.messages.list(thread.id);
+  const lastMessage = messages.data[0];
+  return lastMessage.content[0].type === 'text' ? lastMessage.content[0].text.value : '';
+}
+
+export async function getAnalysisFromOpenAI(transactions: unknown, address: string) {
+  console.log(`
+    
+    
+    🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈
+    ====INITIALIZING OPENAI THREAD====
+    🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈
+
+    
+    `)
   let threadId: string | undefined;
   try {
-    // Create a thread
     const thread = await openai.beta.threads.create();
     threadId = thread.id;
 
-    // Add a message to the thread
-    await openai.beta.threads.messages.create(thread.id, {
-      role: "user",
-      content: JSON.stringify({
-        address,
-        transactions
-      })
+    // Chunk the transactions
+    const chunks = chunkTransactions(transactions as any[]);
+    let context = "";
+    let finalAnalysis = {};
+
+    // Initialize progress
+    const normalizedAddress = address.toLowerCase();
+    analysisProgress.set(normalizedAddress, {
+      currentChunk: 0,
+      totalChunks: chunks.length
     });
 
-    // Run the assistant
-    const run = await openai.beta.threads.runs.create(thread.id, {
+    // Process each chunk sequentially, building context
+    for (let index = 0; index < chunks.length; index++) {
+      const chunk = chunks[index];
+      const chunkAnalysis = await analyzeTransactionChunk(chunk, thread, context, index, chunks.length);
+      
+      // Update progress after each chunk
+      analysisProgress.set(normalizedAddress, {
+        currentChunk: index + 1,
+        totalChunks: chunks.length
+      });
+
+      try {
+        const parsedChunkAnalysis = JSON.parse(chunkAnalysis);
+        context = JSON.stringify(parsedChunkAnalysis);
+        finalAnalysis = { ...finalAnalysis, ...parsedChunkAnalysis };
+        console.log({finalAnalysis});
+      } catch (error) {
+        console.error('Error parsing chunk analysis:', error);
+      }
+    }
+
+    // Final consolidation message
+    await openai.beta.threads.messages.create(thread.id, {
+      role: "user",
+      content: `Please provide a final consolidated analysis of all the transaction data analyzed so far: ${JSON.stringify(finalAnalysis)}`
+    });
+
+    const finalRun = await openai.beta.threads.runs.create(thread.id, {
       assistant_id: ASSISTANT_ID!,
     });
 
-    // Wait for the run to complete
-    let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-    while (runStatus.status !== 'completed') {
-      if (runStatus.status === 'failed') {
-        throw new Error('Assistant run failed');
+    let finalRunStatus = await openai.beta.threads.runs.retrieve(thread.id, finalRun.id);
+    while (finalRunStatus.status !== 'completed') {
+      if (finalRunStatus.status === 'failed') {
+        throw new Error('Final analysis run failed');
       }
+      console.log({finalRunStatus});
       await new Promise(resolve => setTimeout(resolve, 1000));
-      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      finalRunStatus = await openai.beta.threads.runs.retrieve(thread.id, finalRun.id);
     }
 
-    // Get the messages
-    const messages = await openai.beta.threads.messages.list(thread.id);
-    const lastMessage = messages.data[0];
+    const finalMessages = await openai.beta.threads.messages.list(thread.id);
+    const finalMessage = finalMessages.data[0];
+    return JSON.parse(finalMessage.content[0].type === 'text' ? finalMessage.content[0].text.value : '');
 
-    // Parse the assistant's response
-    console.log(JSON.stringify(lastMessage, null, 2));
-    const analysis = JSON.parse(lastMessage.content[0].type === 'text' ? lastMessage.content[0].text.value : '');
-    return analysis;
   } catch (error) {
     console.error('Error getting analysis from OpenAI:', error);
     throw error;
   } finally {
-    // Clean up the thread
     if (threadId) {
       try {
         await openai.beta.threads.del(threadId);
@@ -290,6 +355,26 @@ async function getAnalysisFromOpenAI(transactions: unknown, address: string) {
         console.error('Error cleaning up thread:', cleanupError);
       }
     }
+    // Clean up progress tracking
+    analysisProgress.delete(address.toLowerCase());
+  }
+}
+
+export async function getFromS3Cache(key: string) {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+    
+    const response = await s3Client.send(command);
+    if (response.Body) {
+      const str = await response.Body.transformToString();
+      return JSON.parse(str);
+    }
+  } catch (e) {
+    console.log({e});
+    return null;
   }
 }
 
@@ -311,39 +396,86 @@ export async function POST(request: Request) {
       );
     }
 
+    const normalizedAddress = address.toLowerCase();
+
     // Check if we have cached analysis in S3
-    const analysisCacheKey = `wrapped-2024-analysis/${address.toLowerCase()}.json`;
+    const analysisCacheKey = `wrapped-2024-analysis/${normalizedAddress}.json`;
     const cachedAnalysis = await getFromS3Cache(analysisCacheKey);
     
     if (cachedAnalysis) {
       console.log('Analysis cache hit for address:', address);
-      return NextResponse.json({ analysis: cachedAnalysis });
+      return NextResponse.json({ 
+        status: 'complete',
+        analysis: cachedAnalysis 
+      });
+    }
+
+    // Check if analysis is already in progress
+    if (activeAnalyses.has(normalizedAddress)) {
+      console.log(`Analysis already in progress for ${normalizedAddress}`);
+      const chunkProgress = analysisProgress.get(normalizedAddress);
+      
+      return NextResponse.json({
+        status: 'analyzing',
+        message: chunkProgress 
+          ? `Analyzing chunk ${chunkProgress.currentChunk} of ${chunkProgress.totalChunks}...`
+          : 'Analyzing your transactions with AI...',
+        step: 2,
+        totalSteps: 3,
+        progress: chunkProgress ? {
+          current: chunkProgress.currentChunk,
+          total: chunkProgress.totalChunks
+        } : undefined
+      });
     }
 
     // Check if we have cached raw transactions
-    const rawCacheKey = `wrapped-2024-raw/${address.toLowerCase()}.json`;
+    const rawCacheKey = `wrapped-2024-raw/${normalizedAddress}.json`;
     let transactions;
+    let status: 'fetching' | 'analyzing' = 'fetching';
+    let step = 1;
     
     try {
       transactions = await getFromS3Cache(rawCacheKey);
+      if (transactions) {
+        status = 'analyzing';
+        step = 2;
+      }
     } catch (error) {
       console.error('Error getting transactions from S3:', error);
     }
     
-    if (!transactions) {
-      // Fetch new data from Zapper
-      transactions = await fetchTransactionsFromZapper(address);
-      // Store the raw transactions in S3
-      await saveToS3Cache(rawCacheKey, transactions);
+    // Start the background process
+    activeAnalyses.add(normalizedAddress);
+    console.log(`Starting analysis for ${normalizedAddress}`);
+    
+    try {
+      const processUrl = new URL('/api/process-wrapped', request.url).toString();
+      fetch(processUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.API_ROUTE_SECRET!
+        },
+        body: JSON.stringify({ address: normalizedAddress })
+      }).catch((error) => {
+        console.error('Error triggering background process:', error);
+        activeAnalyses.delete(normalizedAddress);
+      });
+    } catch (error) {
+      console.error('Error triggering background process:', error);
+      activeAnalyses.delete(normalizedAddress);
     }
 
-    // Get analysis from OpenAI
-    const analysis = await getAnalysisFromOpenAI(transactions, address);
+    return NextResponse.json({
+      status,
+      message: status === 'analyzing' 
+        ? 'Starting analysis of your transactions...'
+        : 'Fetching your transaction history... (Step 1 of 3)',
+      step,
+      totalSteps: 3
+    });
 
-    // Store the analysis in S3
-    await saveToS3Cache(analysisCacheKey, analysis);
-
-    return NextResponse.json({ analysis });
   } catch (error) {
     console.error('Error processing request:', error);
     return NextResponse.json(
