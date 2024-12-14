@@ -5,8 +5,8 @@ export async function analyzeWrapped(address: string) {
   if (!address) throw new Error('Address is required')
 
   try {
-    const processUrl = new URL('/api/process-wrapped', process.env.APP_URL!).toString();
-    const response = await fetch(processUrl, {
+    const analyzeUrl = new URL('/api/analyze-wrapped', process.env.APP_URL!).toString();
+    const response = await fetch(analyzeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
