@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { fetchTransactionsFromZapper, getAnalysisFromOpenAI, saveToS3Cache, isValidApiKey, getFromS3Cache, activeAnalyses } from '../analyze-wrapped/route';
+import { fetchTransactionsFromZapper } from '~/utils/api/zapper';
+import { getFromS3Cache, saveToS3Cache } from '~/utils/api/s3';
+import { isValidApiKey } from '~/utils/api/validate';
+import { activeAnalyses, getAnalysisFromOpenAI } from '~/utils/api/openai';
 
 export async function POST(request: Request) {
   try {
