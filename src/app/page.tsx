@@ -9,8 +9,11 @@ import Image from 'next/image';
 // Import Swiper styles
 import 'swiper/css';
 import 'swiper/css/effect-cards';
+import { Avatar, Name } from '@paperclip-labs/whisk-sdk/identity';
+import { zeroAddress } from 'viem';
 
 interface TitleCard {
+  showIdentity?: boolean;
   type: 'title';
   title: string;
   description: string;
@@ -36,9 +39,19 @@ interface Analysis {
 
 type CardItem = TitleCard | (AnalysisItem & { type: 'analysis' });
 
-function TitleCard({ title, description, icon }: { title: string; description: string; icon?: string }) {
+function TitleCard({ title, description, icon, showIdentity, address }: { title: string; description: string; icon?: string; showIdentity?: boolean; address?: `0x${string}` }) {
   return (
     <div className="analysis-card min-h-[400px] flex flex-col items-center justify-center text-center px-8">
+      {showIdentity && (
+        <div className="mb-8 grid grid-cols-1 gap-4">
+          <div className="rounded-full overflow-hidden mx-auto">
+            <Avatar address={address ?? zeroAddress} size={128} className="rounded-full w-32 h-32 mx-auto" />
+          </div>
+          <div className="text-xl text-center font-bold text-gray-800">
+            {address ? <Name address={address} /> : 'Unknown'}
+          </div>
+        </div>
+      )}
       <h2 className="text-4xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 flex flex-col items-center">
         {icon && <span className="text-4xl">{icon}</span>}
         {title}
@@ -90,9 +103,9 @@ function AnalysisCard({ item }: { item: AnalysisItem }) {
   );
 }
 
-function Card({ item }: { item: CardItem }) {
+function Card({ item, address }: { item: CardItem, address?: `0x${string}` }) {
   if (item.type === 'title') {
-    return <TitleCard title={item.title} description={item.description} icon={item.icon} />;
+    return <TitleCard title={item.title} description={item.description} icon={item.icon} showIdentity={item.showIdentity} address={address} />;
   }
   return <AnalysisCard item={item} />;
 }
@@ -109,7 +122,7 @@ interface LoadingState {
 }
 
 export default function Home() {
-  const [address, setAddress] = useState('');
+  const [address, setAddress] = useState<`0x${string}`>();
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -149,7 +162,7 @@ export default function Home() {
     setError('');
     setAnalysis(null);
     
-    pollForResults(address);
+    pollForResults(address as string);
   };
 
   function LoadingCard() {
@@ -197,6 +210,7 @@ export default function Home() {
   const allItems: CardItem[] = analysis ? [
     // Intro Card
     {
+      showIdentity: true,
       type: 'title',
       title: 'Your Base 2024 Wrapped',
       description: "Let's take a journey through your year on Base. We've analyzed your transactions to uncover some interesting insights about your onchain activity. Swipe to begin! →"
@@ -240,6 +254,7 @@ export default function Home() {
 
     // Final Card
     {
+      showIdentity: true,
       type: 'title',
       icon: '🎊',
       title: 'Happy New Year!',
@@ -259,7 +274,7 @@ export default function Home() {
             <input
               type="text"
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(e) => setAddress(e.target.value as `0x${string}`)}
               placeholder="Enter Ethereum address"
               autoComplete="off"
               disabled={loading}
@@ -296,7 +311,7 @@ export default function Home() {
               >
                 {allItems.map((item, index) => (
                   <SwiperSlide key={index}>
-                    <Card item={item} />
+                    <Card item={item} address={address} />
                   </SwiperSlide>
                 ))}
               </Swiper>
