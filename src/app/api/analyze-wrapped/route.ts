@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     console.log(`Starting analysis for ${normalizedAddress}`);
     
     try {
-      const processUrl = new URL('/api/process-wrapped', request.url).toString();
+      const processUrl = new URL(`/api/process-wrapped`, process.env.APP_URL!).toString();
       fetch(processUrl, {
         method: 'POST',
         headers: {
