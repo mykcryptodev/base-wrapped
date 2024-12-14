@@ -84,9 +84,7 @@ export async function fetchTransactionsFromZapper(address: string) {
   const allTransactions = [];
   let hasNextPage = true;
   let cursor = null;
-  const SIX_MONTHS_AGO = new Date();
-  SIX_MONTHS_AGO.setMonth(SIX_MONTHS_AGO.getMonth() - 6);
-  const PERIOD_START = SIX_MONTHS_AGO.getTime();
+  const PERIOD_START = new Date('2024-01-01').getTime();
   const PERIOD_END = new Date().getTime();
 
   while (hasNextPage) {
@@ -231,7 +229,7 @@ export async function saveToS3Cache(key: string, data: unknown) {
 }
 
 // New function to chunk transactions
-function chunkTransactions(transactions: any[], chunkSize = 100) {
+function chunkTransactions(transactions: any[], chunkSize = 200) {
   const chunks = [];
   for (let i = 0; i < transactions.length; i += chunkSize) {
     chunks.push(transactions.slice(i, i + chunkSize));
