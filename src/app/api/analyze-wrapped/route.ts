@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
 const GRAPHQL_ENDPOINT = 'https://public.zapper.xyz/graphql';
 
@@ -59,7 +59,7 @@ function isValidApiKey(request: Request): boolean {
   return apiKey === validApiKey;
 }
 
-async function sendDataToAnalysis(transactions: any, address: string) {
+async function sendDataToAnalysis(transactions: unknown, address: string) {
   // send the data to run analysis
   // try {
   //   const analysisUrl = 'https://hook.us1.make.com/4ae95x7n2fy88bddfwv4i7vo8ewfdzi9'
@@ -80,7 +80,7 @@ async function sendDataToAnalysis(transactions: any, address: string) {
   //   console.error('Error sending data to analysis:', error);
   // }
   console.log('sending data to analysis');
-  console.log({transactions});
+  console.log({transactions, address});
 }
 
 async function fetchTransactionsFromZapper(address: string) {
@@ -218,7 +218,7 @@ async function getFromS3Cache(key: string) {
   }
 }
 
-async function saveToS3Cache(key: string, data: any) {
+async function saveToS3Cache(key: string, data: unknown) {
   try {
     const command = new PutObjectCommand({
       Bucket: BUCKET_NAME,
