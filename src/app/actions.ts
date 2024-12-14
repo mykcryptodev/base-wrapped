@@ -1,32 +1,26 @@
 'use server';
 
 export async function analyzeWrapped(address: string) {
-  // Always ensure we have a protocol in the URL
-  const baseUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}` 
-    : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
-  // Ensure baseUrl has protocol
-  const apiUrl = new URL('/api/analyze-wrapped', baseUrl).toString();
+  // Validate address
+  if (!address) throw new Error('Address is required')
 
   try {
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`${process.env.APP_URL}/api/analyze-wrapped`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.API_ROUTE_SECRET!,
+        'x-api-key': process.env.API_ROUTE_SECRET!
       },
-      body: JSON.stringify({ address }),
-    });
+      body: JSON.stringify({ address })
+    })
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to fetch data');
+      throw new Error('Failed to analyze address')
     }
 
-    return response.json();
+    return await response.json()
   } catch (error) {
-    console.error('Error in analyzeWrapped:', error);
-    throw new Error('Failed to analyze address. Please try again.');
+    console.error('Analysis error:', error)
+    throw new Error('Failed to analyze address')
   }
 } 
