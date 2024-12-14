@@ -1,7 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: `${process.env.VERCEL_BLOB_STORE}.public.blob.vercel-storage.com`,
+        port: '',
+      },
+    ],
+  },
 };
 
 export default nextConfig;

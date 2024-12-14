@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { put, getDownloadUrl } from '@vercel/blob';
+import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 
 const GRAPHQL_ENDPOINT = 'https://public.zapper.xyz/graphql';
 
@@ -57,6 +57,30 @@ function isValidApiKey(request: Request): boolean {
   }
 
   return apiKey === validApiKey;
+}
+
+async function sendDataToAnalysis(transactions: any, address: string) {
+  // send the data to run analysis
+  // try {
+  //   const analysisUrl = 'https://hook.us1.make.com/4ae95x7n2fy88bddfwv4i7vo8ewfdzi9'
+  //   const response = await fetch(analysisUrl, {
+  //     method: 'POST',
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //     },
+  //     body: JSON.stringify({ 
+  //       transactions,
+  //       address
+  //     }),
+  //   });
+  //   if (!response.ok) {
+  //     console.error('Error sending data to analysis:', response);
+  //   }
+  // } catch (error) {
+  //   console.error('Error sending data to analysis:', error);
+  // }
+  console.log('sending data to analysis');
+  console.log({transactions});
 }
 
 async function fetchTransactionsFromZapper(address: string) {
@@ -165,6 +189,51 @@ async function fetchTransactionsFromZapper(address: string) {
   return allTransactions;
 }
 
+// Initialize S3 client
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION!,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
+
+const BUCKET_NAME = process.env.S3_BUCKET_NAME!;
+
+async function getFromS3Cache(key: string) {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+    
+    const response = await s3Client.send(command);
+    if (response.Body) {
+      const str = await response.Body.transformToString();
+      return JSON.parse(str);
+    }
+  } catch (error) {
+    console.log('Error reading from S3:', error);
+    return null;
+  }
+}
+
+async function saveToS3Cache(key: string, data: any) {
+  try {
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: JSON.stringify(data),
+      ContentType: 'application/json',
+    });
+    
+    await s3Client.send(command);
+  } catch (error) {
+    console.error('Error saving to S3:', error);
+    throw error;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     if (!isValidApiKey(request)) {
@@ -183,35 +252,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if we have cached data in blob storage
-    const blobKey = `wrapped-2024/${address.toLowerCase()}.json`;
-    try {
-      const url = await getDownloadUrl(blobKey);
-      if (url) {
-        const response = await fetch(url);
-        if (response.ok) {
-          const cachedData = await response.json();
-          return NextResponse.json({ transactions: cachedData });
-        }
-      }
-    } catch (error) {
-      // If blob doesn't exist or there's an error, continue with fetching new data
-      console.log('No cached data found, fetching from API', error);
+    // Check if we have cached data in S3
+    const cacheKey = `wrapped-2024-raw/${address.toLowerCase()}.json`;
+    const cachedData = await getFromS3Cache(cacheKey);
+    
+    if (cachedData) {
+      console.log('Cache hit for address:', address);
+      sendDataToAnalysis(cachedData, address);
+      return NextResponse.json({ transactions: cachedData });
     }
 
     // Fetch new data from Zapper
     const transactions = await fetchTransactionsFromZapper(address);
 
-    // Store the results in blob storage
-    await put(
-      blobKey,
-      JSON.stringify(transactions),
-      {
-        access: 'public',
-        contentType: 'application/json',
-        addRandomSuffix: false // Ensure we use exact blobKey
-      }
-    );
+    // Store the results in S3
+    await saveToS3Cache(cacheKey, transactions);
+
+    // send the data to run analysis
+    await sendDataToAnalysis(transactions, address);
 
     return NextResponse.json({ transactions });
   } catch (error) {
