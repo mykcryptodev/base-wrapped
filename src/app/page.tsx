@@ -79,8 +79,8 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="max-w-4xl mx-auto p-8">
-        <h1 className="text-5xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-          Base Wrapped 2023
+        <h1 className="text-5xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-blue-800 to-purple-600">
+          Base Wrapped 2024
         </h1>
         
         <form onSubmit={handleSubmit} className="mb-12">
