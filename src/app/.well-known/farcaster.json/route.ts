@@ -4,14 +4,14 @@ export async function GET() {
   const config = {
     accountAssociation: {
       header:
-        "eyJmaWQiOjM2MjEsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHgyY2Q4NWEwOTMyNjFmNTkyNzA4MDRBNkVBNjk3Q2VBNENlQkVjYWZFIn0",
-      payload: "eyJkb21haW4iOiJmcmFtZXMtdjIudmVyY2VsLmFwcCJ9",
+        "eyJmaWQiOjIxNzI0OCwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweGViYTc4NzE3YjZmMDU5Q0ZFMGI3NUU3NUMyZWQ0QkI3Y0E2NTE1NEYifQ",
+      payload: "eyJkb21haW4iOiJiYXNld3JhcHBlZC5tZSJ9",
       signature:
-        "MHhiNDIwMzQ1MGZkNzgzYTExZjRiOTllZTFlYjA3NmMwOTdjM2JkOTY1NGM2ODZjYjkyZTAyMzk2Y2Q0YjU2MWY1MjY5NjI5ZGQ5NTliYjU0YzEwOGI4OGVmNjdjMTVlZTdjZDc2YTRiMGU5NzkzNzA3YzkxYzFkOWFjNTg0YmQzNjFi",
+        "MHhiODUzYzhkMjc0NzdlNmMxNWYyY2E5OTFhMTljYjI2YWI1YjFjODMzY2UxNmIyZjA5MWIzYzMwODBkMjk2ZjNhNWJmMzMxZGI2NjIzNTU0NGFiYWIyMTJhYWFiMDI3NGExZjMyYzQzMzk1NjdhYTExMGRmODc2ZGIyN2VhNTE0OTFj",
     },
     frame: {
       version: "0.0.0",
-      name: "Frames v2 Demo",
+      name: "Base Wrapped",
       iconUrl: `${appUrl}/icon.png`,
       splashImageUrl: `${appUrl}/splash.png`,
       splashBackgroundColor: "#f7f7f7",
