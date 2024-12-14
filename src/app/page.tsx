@@ -13,6 +13,7 @@ interface TitleCard {
   type: 'title';
   title: string;
   description: string;
+  icon?: string;
 }
 
 interface AnalysisItem {
@@ -33,10 +34,11 @@ interface Analysis {
 
 type CardItem = TitleCard | (AnalysisItem & { type: 'analysis' });
 
-function TitleCard({ title, description }: { title: string; description: string }) {
+function TitleCard({ title, description, icon }: { title: string; description: string; icon?: string }) {
   return (
     <div className="analysis-card min-h-[400px] flex flex-col items-center justify-center text-center px-8">
-      <h2 className="text-4xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+      <h2 className="text-4xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 flex flex-col items-center">
+        {icon && <span className="text-4xl">{icon}</span>}
         {title}
       </h2>
       <p className="text-xl text-gray-600 leading-relaxed">
@@ -61,8 +63,8 @@ function AnalysisCard({ item }: { item: AnalysisItem }) {
         </p>
       </div>
       {item.category && (
-        <div className="mt-4 inline-block px-4 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-medium">
-          {item.category}
+        <div className="mt-4 inline-block px-4 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-medium w-fit">
+          {item.category.toLowerCase()}
         </div>
       )}
     </div>
@@ -71,7 +73,7 @@ function AnalysisCard({ item }: { item: AnalysisItem }) {
 
 function Card({ item }: { item: CardItem }) {
   if (item.type === 'title') {
-    return <TitleCard title={item.title} description={item.description} />;
+    return <TitleCard title={item.title} description={item.description} icon={item.icon} />;
   }
   return <AnalysisCard item={item} />;
 }
@@ -99,9 +101,17 @@ export default function Home() {
 
   // Create an array with title cards and analysis items
   const allItems: CardItem[] = analysis ? [
+    // Intro Card
+    {
+      type: 'title',
+      title: 'Your Base 2024 Wrapped',
+      description: "Let's take a journey through your year on Base. We've analyzed your transactions to uncover some interesting insights about your onchain activity. Swipe to begin! →"
+    },
+
     // Popular Tokens Section
     {
       type: 'title',
+      icon: '🪙',
       title: 'Popular Tokens',
       description: "Discover the tokens that defined your journey on Base"
     },
@@ -110,6 +120,7 @@ export default function Home() {
     // Popular Actions Section
     {
       type: 'title',
+      icon: '⚡',
       title: 'Your Actions',
       description: "A look at how you've been interacting with Base"
     },
@@ -118,6 +129,7 @@ export default function Home() {
     // Popular Users Section
     {
       type: 'title',
+      icon: '🤝',
       title: 'Your Network',
       description: "The addresses you've interacted with the most"
     },
@@ -126,10 +138,19 @@ export default function Home() {
     // Other Stories Section
     {
       type: 'title',
+      icon: '✨',
       title: 'Highlights',
       description: "Special moments from your Base journey"
     },
     ...analysis.otherStories.map(item => ({ ...item, type: 'analysis' as const })),
+
+    // Final Card
+    {
+      type: 'title',
+      icon: '🎊',
+      title: 'Happy New Year!',
+      description: "Thank you for being part of the Base ecosystem in 2024. Here's to an even more exciting 2025 filled with new achievements and milestones. Keep building! 🚀"
+    },
   ] : [];
 
   return (
