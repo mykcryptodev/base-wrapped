@@ -68,30 +68,6 @@ function isValidApiKey(request: Request): boolean {
   return apiKey === validApiKey;
 }
 
-async function sendDataToAnalysis(transactions: unknown, address: string) {
-  // send the data to run analysis
-  // try {
-  //   const analysisUrl = 'https://hook.us1.make.com/4ae95x7n2fy88bddfwv4i7vo8ewfdzi9'
-  //   const response = await fetch(analysisUrl, {
-  //     method: 'POST',
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //     },
-  //     body: JSON.stringify({ 
-  //       transactions,
-  //       address
-  //     }),
-  //   });
-  //   if (!response.ok) {
-  //     console.error('Error sending data to analysis:', response);
-  //   }
-  // } catch (error) {
-  //   console.error('Error sending data to analysis:', error);
-  // }
-  console.log('sending data to analysis');
-  console.log({transactions, address});
-}
-
 async function fetchTransactionsFromZapper(address: string) {
   const allTransactions = [];
   let hasNextPage = true;
