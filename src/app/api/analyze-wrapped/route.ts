@@ -60,7 +60,7 @@ function isValidApiKey(request: Request): boolean {
 }
 
 async function fetchTransactionsFromZapper(address: string) {
-  let allTransactions = [];
+  const allTransactions = [];
   let hasNextPage = true;
   let cursor = null;
   const TWO_MONTHS_AGO = new Date();
