@@ -196,7 +196,7 @@ export async function POST(request: Request) {
       }
     } catch (error) {
       // If blob doesn't exist or there's an error, continue with fetching new data
-      console.log('No cached data found, fetching from API');
+      console.log('No cached data found, fetching from API', error);
     }
 
     // Fetch new data from Zapper
