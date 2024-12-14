@@ -5,12 +5,14 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --card-shadow: rgba(0, 0, 0, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --card-shadow: rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -21,10 +23,62 @@ body {
 }
 
 * {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 *::-webkit-scrollbar {
   display: none;
+}
+
+.swiper {
+  width: 100%;
+  padding-top: 50px;
+  padding-bottom: 50px;
+}
+
+.swiper-slide {
+  background-position: center;
+  background-size: cover;
+  transition: all 0.3s ease-out;
+  border-radius: 32px;
+}
+
+/* Card stack effect */
+.swiper-slide:not(.swiper-slide-active) {
+  opacity: 0.7;
+  transform: translateY(4%) scale(0.95);
+  border-radius: 36px;
+  height: 400px;
+}
+
+.swiper-slide:not(.swiper-slide-active) .analysis-card {
+  border-radius: 36px;
+}
+
+.swiper-slide-shadow-left,
+.swiper-slide-shadow-right {
+  border-radius: 36px !important;
+  background-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.05),
+    rgba(0, 0, 0, 0)
+  ) !important;
+}
+
+/* Card styles */
+.analysis-card {
+  background: white;
+  border-radius: 32px;
+  box-shadow: 
+    0 1px 2px var(--card-shadow),
+    0 4px 16px var(--card-shadow),
+    0 8px 24px var(--card-shadow);
+  transform: translateZ(0);
+  transition: all 0.2s ease;
+  padding: 2rem;
+}
+
+.analysis-card:hover {
+  transform: translateY(-2px);
 }
