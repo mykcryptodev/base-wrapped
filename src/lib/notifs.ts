@@ -1,19 +1,9 @@
-import {
-  SendNotificationRequest,
-  sendNotificationResponseSchema,
-} from "@farcaster/frame-sdk";
-import { getUserNotificationDetails } from "~/lib/kv";
+import { getUserNotificationDetails } from "./kv";
 
-const appUrl = process.env.NEXT_PUBLIC_URL || "";
-
-type SendFrameNotificationResult =
-  | {
-      state: "error";
-      error: unknown;
-    }
-  | { state: "no_token" }
-  | { state: "rate_limit" }
-  | { state: "success" };
+type SendNotificationResult =
+  | { state: "success" }
+  | { state: "error"; error: string }
+  | { state: "rate_limit" };
 
 export async function sendFrameNotification({
   fid,
@@ -23,43 +13,43 @@ export async function sendFrameNotification({
   fid: number;
   title: string;
   body: string;
-}): Promise<SendFrameNotificationResult> {
-  const notificationDetails = await getUserNotificationDetails(fid);
-  if (!notificationDetails) {
-    return { state: "no_token" };
+}): Promise<SendNotificationResult> {
+  const details = await getUserNotificationDetails(fid);
+  if (!details) {
+    return { state: "error", error: "No notification details found" };
   }
 
-  const response = await fetch(notificationDetails.url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      notificationId: crypto.randomUUID(),
-      title,
-      body,
-      targetUrl: appUrl,
-      tokens: [notificationDetails.token],
-    } satisfies SendNotificationRequest),
-  });
+  try {
+    const response = await fetch(details.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        notificationId: `${fid}-${Date.now()}`,
+        title,
+        body,
+        targetUrl: process.env.NEXT_PUBLIC_HOST,
+        tokens: [details.token],
+      }),
+    });
 
-  const responseJson = await response.json();
+    const data = await response.json();
 
-  if (response.status === 200) {
-    const responseBody = sendNotificationResponseSchema.safeParse(responseJson);
-    if (responseBody.success === false) {
-      // Malformed response
-      return { state: "error", error: responseBody.error.errors };
-    }
-
-    if (responseBody.data.result.rateLimitedTokens.length) {
-      // Rate limited
+    if (data.result.successfulTokens.includes(details.token)) {
+      return { state: "success" };
+    } else if (data.result.rateLimitedTokens.includes(details.token)) {
       return { state: "rate_limit" };
+    } else {
+      return {
+        state: "error",
+        error: "Failed to send notification",
+      };
     }
-
-    return { state: "success" };
-  } else {
-    // Error response
-    return { state: "error", error: responseJson };
+  } catch (error) {
+    return {
+      state: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
   }
 }

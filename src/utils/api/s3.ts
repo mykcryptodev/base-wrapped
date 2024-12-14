@@ -22,8 +22,9 @@ export async function getFromS3Cache(key: string) {
       const str = await response.Body.transformToString();
       return JSON.parse(str);
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
-    console.log({e});
+    // ts ignore that we arent using the error
     return null;
   }
 }

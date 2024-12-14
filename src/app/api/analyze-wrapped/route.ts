@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { address } = await request.json();
+    const { address, fid } = await request.json();
 
     if (!address || typeof address !== 'string') {
       return NextResponse.json(
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         status: 'analyzing',
         message: chunkProgress 
-          ? `Analyzing chunk ${chunkProgress.currentChunk} of ${chunkProgress.totalChunks}...`
+          ? `Analyzing transaction batch ${chunkProgress.currentChunk + 1} of ${chunkProgress.totalChunks + 1}...`
           : 'Analyzing your transactions with AI...',
         step: 2,
         totalSteps: 3,
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
           'Content-Type': 'application/json',
           'x-api-key': process.env.API_ROUTE_SECRET!
         },
-        body: JSON.stringify({ address: normalizedAddress })
+        body: JSON.stringify({ address: normalizedAddress, fid })
       }).catch((error) => {
         console.error('Error triggering background process:', error);
         activeAnalyses.delete(normalizedAddress);

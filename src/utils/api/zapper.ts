@@ -47,6 +47,7 @@ interface GraphQLResponse {
 
 
 export async function fetchTransactionsFromZapper(address: string) {
+  console.log(`Fetching transactions from Zapper for ${address}`);
   const GRAPHQL_ENDPOINT = 'https://public.zapper.xyz/graphql';
 
   const allTransactions = [];
@@ -122,47 +123,53 @@ export async function fetchTransactionsFromZapper(address: string) {
         isSigner: true,
         realtimeInterpretation: false,
         network: "BASE_MAINNET",
-        first: 100,
+        first: 50,
         after: cursor
       }
     };
 
-    const response = await fetch(GRAPHQL_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(process.env.ZAPPER_API_KEY!).toString('base64')}`,
-      },
-      body: JSON.stringify(query),
-    });
-
-    if (!response.ok) {
-      throw new Error('GraphQL request failed');
-    }
-
-    const result: GraphQLResponse = await response.json();
-    const transactions = result.data.accountsTimeline.edges;
-    const pageInfo = result.data.accountsTimeline.pageInfo;
-
-    // Check if we've reached our period or earlier
-    const oldestTimestamp = transactions[transactions.length - 1]?.node.timestamp;
-    if (oldestTimestamp && oldestTimestamp < PERIOD_START) {
-      // Filter only the period transactions from this batch
-      const periodTransactions = transactions.filter(
-        tx => tx.node.timestamp >= PERIOD_START && tx.node.timestamp < PERIOD_END
-      );
-      allTransactions.push(...periodTransactions);
-      break;
-    }
-
-    allTransactions.push(...transactions);
-    console.log({transactions});
-
-    // Update pagination using pageInfo
-    hasNextPage = pageInfo.hasNextPage;
-    console.log({pageInfo, hasNextPage});
-    if (hasNextPage) {
-      cursor = pageInfo.endCursor;
+    try {
+      const response = await fetch(GRAPHQL_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${Buffer.from(process.env.ZAPPER_API_KEY!).toString('base64')}`,
+        },
+        body: JSON.stringify(query),
+      });
+  
+      if (!response.ok) {
+        console.error(`Zapper request failed: ${response.statusText}`);
+        throw new Error('GraphQL request failed');
+      }
+  
+      const result: GraphQLResponse = await response.json();
+      const transactions = result.data.accountsTimeline.edges;
+      const pageInfo = result.data.accountsTimeline.pageInfo;
+  
+      // Check if we've reached our period or earlier
+      const oldestTimestamp = transactions[transactions.length - 1]?.node.timestamp;
+      if (oldestTimestamp && oldestTimestamp < PERIOD_START) {
+        // Filter only the period transactions from this batch
+        const periodTransactions = transactions.filter(
+          tx => tx.node.timestamp >= PERIOD_START && tx.node.timestamp < PERIOD_END
+        );
+        allTransactions.push(...periodTransactions);
+        break;
+      }
+  
+      allTransactions.push(...transactions);
+      console.log({transactions});
+  
+      // Update pagination using pageInfo
+      hasNextPage = pageInfo.hasNextPage;
+      console.log({pageInfo, hasNextPage});
+      if (hasNextPage) {
+        cursor = pageInfo.endCursor;
+      }
+    } catch (error) {
+      console.error('Error fetching transactions from Zapper:', error);
+      throw error;
     }
   }
 

@@ -13,16 +13,17 @@ function getUserNotificationDetailsKey(fid: number): string {
 export async function getUserNotificationDetails(
   fid: number
 ): Promise<FrameNotificationDetails | null> {
-  return await redis.get<FrameNotificationDetails>(
+  const details = await redis.get<FrameNotificationDetails>(
     getUserNotificationDetailsKey(fid)
   );
+  return details || null;
 }
 
 export async function setUserNotificationDetails(
   fid: number,
-  notificationDetails: FrameNotificationDetails
+  details: FrameNotificationDetails
 ): Promise<void> {
-  await redis.set(getUserNotificationDetailsKey(fid), notificationDetails);
+  await redis.set(getUserNotificationDetailsKey(fid), details);
 }
 
 export async function deleteUserNotificationDetails(
