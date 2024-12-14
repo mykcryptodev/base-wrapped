@@ -231,7 +231,7 @@ export async function saveToS3Cache(key: string, data: unknown) {
 }
 
 // New function to chunk transactions
-function chunkTransactions(transactions: any[], chunkSize = 10) {
+function chunkTransactions(transactions: any[], chunkSize = 100) {
   const chunks = [];
   for (let i = 0; i < transactions.length; i += chunkSize) {
     chunks.push(transactions.slice(i, i + chunkSize));
@@ -240,7 +240,7 @@ function chunkTransactions(transactions: any[], chunkSize = 10) {
 }
 
 // Modified function to analyze chunks
-async function analyzeTransactionChunk(chunk: any, thread: any, context: string, index: number, totalChunks: number) {
+async function analyzeTransactionChunk(chunk: any, index: number, totalChunks: number) {
   console.log(`
     
     
@@ -249,27 +249,40 @@ async function analyzeTransactionChunk(chunk: any, thread: any, context: string,
 
 
     `)
-  await openai.beta.threads.messages.create(thread.id, {
-    role: "user",
-    content: `Context from previous transactions: ${context}\n\nNew transactions to analyze: ${JSON.stringify(chunk)}`
-  });
+  // Create a new thread for this chunk
+  const thread = await openai.beta.threads.create();
+  
+  try {
+    await openai.beta.threads.messages.create(thread.id, {
+      role: "user",
+      content: `Please analyze this batch of transactions and provide insights: ${JSON.stringify(chunk)}`
+    });
 
-  const run = await openai.beta.threads.runs.create(thread.id, {
-    assistant_id: ASSISTANT_ID!,
-  });
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: ASSISTANT_ID!,
+    });
 
-  let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-  while (runStatus.status !== 'completed') {
-    if (runStatus.status === 'failed') {
-      throw new Error('Assistant run failed');
+    let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+    while (runStatus.status !== 'completed') {
+      if (runStatus.status === 'failed') {
+        throw new Error('Assistant run failed');
+      }
+      console.log({runStatus, runId: run.id, threadId: thread.id});
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
     }
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-  }
 
-  const messages = await openai.beta.threads.messages.list(thread.id);
-  const lastMessage = messages.data[0];
-  return lastMessage.content[0].type === 'text' ? lastMessage.content[0].text.value : '';
+    const messages = await openai.beta.threads.messages.list(thread.id);
+    const lastMessage = messages.data[0];
+    return lastMessage.content[0].type === 'text' ? lastMessage.content[0].text.value : '';
+  } finally {
+    // Clean up the thread
+    try {
+      await openai.beta.threads.del(thread.id);
+    } catch (error) {
+      console.error('Error cleaning up chunk thread:', error);
+    }
+  }
 }
 
 export async function getAnalysisFromOpenAI(transactions: unknown, address: string) {
@@ -277,70 +290,99 @@ export async function getAnalysisFromOpenAI(transactions: unknown, address: stri
     
     
     🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈
-    ====INITIALIZING OPENAI THREAD====
+    ====INITIALIZING ANALYSIS====
     🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈
 
     
     `)
-  let threadId: string | undefined;
+  let finalThread: string | undefined;
   try {
-    const thread = await openai.beta.threads.create();
-    threadId = thread.id;
-
     // Chunk the transactions
     const chunks = chunkTransactions(transactions as any[]);
-    let context = "";
-    let finalAnalysis = {};
+    const normalizedAddress = address.toLowerCase();
 
     // Initialize progress
-    const normalizedAddress = address.toLowerCase();
     analysisProgress.set(normalizedAddress, {
       currentChunk: 0,
       totalChunks: chunks.length
     });
 
-    // Process each chunk sequentially, building context
-    for (let index = 0; index < chunks.length; index++) {
-      const chunk = chunks[index];
-      const chunkAnalysis = await analyzeTransactionChunk(chunk, thread, context, index, chunks.length);
-      
-      // Update progress after each chunk
-      analysisProgress.set(normalizedAddress, {
-        currentChunk: index + 1,
-        totalChunks: chunks.length
-      });
+    // Process chunks in parallel with separate threads
+    const chunkPromises = chunks.map((chunk, index) => 
+      analyzeTransactionChunk(chunk, index, chunks.length)
+        .then(async (chunkAnalysis) => {
+          // Update progress after each chunk
+          analysisProgress.set(normalizedAddress, {
+            currentChunk: index + 1,
+            totalChunks: chunks.length
+          });
 
-      try {
-        const parsedChunkAnalysis = JSON.parse(chunkAnalysis);
-        context = JSON.stringify(parsedChunkAnalysis);
-        finalAnalysis = { ...finalAnalysis, ...parsedChunkAnalysis };
-        console.log({finalAnalysis});
-      } catch (error) {
-        console.error('Error parsing chunk analysis:', error);
-      }
-    }
+          try {
+            return JSON.parse(chunkAnalysis);
+          } catch (error) {
+            console.error('Error parsing chunk analysis:', error);
+            return {};
+          }
+        })
+    );
+
+    // Wait for all chunks to be processed
+    const chunkResults = await Promise.all(chunkPromises);
+    console.log(`
+      
+
+      ====🔥CHUNK RESULTS====
+      
+      
+      `)
+    console.log(JSON.stringify(chunkResults));
+
+    // Combine all chunk results
+    const combinedAnalysis = chunkResults.reduce((acc, curr) => {
+      // Merge arrays for each category
+      ['popularTokens', 'popularActions', 'popularUsers', 'otherStories'].forEach(category => {
+        if (curr[category]) {
+          if (!acc[category]) acc[category] = [];
+          acc[category] = [...acc[category], ...curr[category]];
+        }
+      });
+      return acc;
+    }, {} as any);
+
+    console.log(`
+      
+
+      ====🔥COMBINED ANALYSIS====
+      
+      
+      `)
+    console.log(JSON.stringify(combinedAnalysis));
+
+    // Create a new thread for final consolidation
+    const finalConsolidationThread = await openai.beta.threads.create();
+    finalThread = finalConsolidationThread.id;
 
     // Final consolidation message
-    await openai.beta.threads.messages.create(thread.id, {
+    await openai.beta.threads.messages.create(finalConsolidationThread.id, {
       role: "user",
-      content: `Please provide a final consolidated analysis of all the transaction data analyzed so far: ${JSON.stringify(finalAnalysis)}`
+      content: `Please provide a final consolidated analysis, removing any duplicates and keeping only the most significant items in each category. Here's all the data: ${JSON.stringify(combinedAnalysis)}`
     });
 
-    const finalRun = await openai.beta.threads.runs.create(thread.id, {
+    const finalRun = await openai.beta.threads.runs.create(finalConsolidationThread.id, {
       assistant_id: ASSISTANT_ID!,
     });
 
-    let finalRunStatus = await openai.beta.threads.runs.retrieve(thread.id, finalRun.id);
+    let finalRunStatus = await openai.beta.threads.runs.retrieve(finalConsolidationThread.id, finalRun.id);
     while (finalRunStatus.status !== 'completed') {
       if (finalRunStatus.status === 'failed') {
         throw new Error('Final analysis run failed');
       }
       console.log({finalRunStatus});
       await new Promise(resolve => setTimeout(resolve, 1000));
-      finalRunStatus = await openai.beta.threads.runs.retrieve(thread.id, finalRun.id);
+      finalRunStatus = await openai.beta.threads.runs.retrieve(finalConsolidationThread.id, finalRun.id);
     }
 
-    const finalMessages = await openai.beta.threads.messages.list(thread.id);
+    const finalMessages = await openai.beta.threads.messages.list(finalConsolidationThread.id);
     const finalMessage = finalMessages.data[0];
     return JSON.parse(finalMessage.content[0].type === 'text' ? finalMessage.content[0].text.value : '');
 
@@ -348,11 +390,11 @@ export async function getAnalysisFromOpenAI(transactions: unknown, address: stri
     console.error('Error getting analysis from OpenAI:', error);
     throw error;
   } finally {
-    if (threadId) {
+    if (finalThread) {
       try {
-        await openai.beta.threads.del(threadId);
+        await openai.beta.threads.del(finalThread);
       } catch (cleanupError) {
-        console.error('Error cleaning up thread:', cleanupError);
+        console.error('Error cleaning up final thread:', cleanupError);
       }
     }
     // Clean up progress tracking
