@@ -6,7 +6,7 @@ import { analyzeWrapped } from './actions';
 export default function Home() {
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
-  const [transactions, setTransactions] = useState<unknown[]>([]);
+  const [analysis, setAnalysis] = useState<unknown[]>([]);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -16,7 +16,7 @@ export default function Home() {
     
     try {
       const data = await analyzeWrapped(address);
-      setTransactions(data.transactions);
+      setAnalysis(data.analysis);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -54,10 +54,10 @@ export default function Home() {
           </div>
         )}
 
-        {transactions.length > 0 && (
+        {analysis && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-semibold mb-4">Your 2024 Transactions</h2>
-            <code>{JSON.stringify(transactions, null, 2)}</code>
+            <h2 className="text-2xl font-semibold mb-4">Your 2024 Analysis</h2>
+            <code>{JSON.stringify(analysis, null, 2)}</code>
           </div>
         )}
       </div>

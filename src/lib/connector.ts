@@ -20,36 +20,44 @@ export function frameConnector() {
       this.connect({ chainId: config.chains[0].id });
     },
     async connect({ chainId } = {}) {
-      const provider = await this.getProvider();
-      const accounts = await provider.request({
-        method: "eth_requestAccounts",
-      });
+      try {
+        const provider = await this.getProvider();
+        const accounts = await provider.request({
+          method: "eth_requestAccounts",
+        });
 
-      if (!accountsChanged) {
-        accountsChanged = this.onAccountsChanged.bind(this)
-        // @ts-expect-error - provider type is stricter
-        provider.on('accountsChanged', accountsChanged)
-      }
-      if (!chainChanged) {
-        chainChanged = this.onChainChanged.bind(this)
-        provider.on('chainChanged', chainChanged)
-      }
-      if (!disconnect) {
-        disconnect = this.onDisconnect.bind(this)
-        provider.on('disconnect', disconnect)
-      }
+        if (!accountsChanged) {
+          accountsChanged = this.onAccountsChanged.bind(this)
+          // @ts-expect-error - provider type is stricter
+          provider.on('accountsChanged', accountsChanged)
+        }
+        if (!chainChanged) {
+          chainChanged = this.onChainChanged.bind(this)
+          provider.on('chainChanged', chainChanged)
+        }
+        if (!disconnect) {
+          disconnect = this.onDisconnect.bind(this)
+          provider.on('disconnect', disconnect)
+        }
 
-      let currentChainId = await this.getChainId();
-      if (chainId && currentChainId !== chainId) {
-        const chain = await this.switchChain!({ chainId });
-        currentChainId = chain.id;
+        let currentChainId = await this.getChainId();
+        if (chainId && currentChainId !== chainId) {
+          const chain = await this.switchChain!({ chainId });
+          currentChainId = chain.id;
+        }
+
+        connected = true;
+
+        return {
+          accounts: accounts.map((x) => getAddress(x)),
+          chainId: currentChainId,
+        };
+      } catch (error) {
+        console.log('Error connecting:', error);
       }
-
-      connected = true;
-
       return {
-        accounts: accounts.map((x) => getAddress(x)),
-        chainId: currentChainId,
+        accounts: [],
+        chainId: 8453,
       };
     },
     async disconnect() {
@@ -75,11 +83,16 @@ export function frameConnector() {
     },
     async getAccounts() {
       if (!connected) throw new Error("Not connected");
-      const provider = await this.getProvider();
-      const accounts = await provider.request({
-        method: "eth_requestAccounts",
-      });
-      return accounts.map((x) => getAddress(x));
+      try {
+        const provider = await this.getProvider();
+        const accounts = await provider?.request({
+          method: "eth_requestAccounts",
+        });
+        return accounts.map((x) => getAddress(x));
+      } catch (error) {
+        console.log(error);
+        return [];
+      }
     },
     async getChainId() {
       const provider = await this.getProvider();
@@ -128,7 +141,18 @@ export function frameConnector() {
       connected = false;
     },
     async getProvider() {
-      return sdk.wallet.ethProvider;
+      try {
+        const provider = await sdk.wallet.ethProvider;
+        if (!provider) {
+          console.log('Provider not available. Please make sure you are using a compatible wallet.');
+        }
+        return provider;
+      } catch (error) {
+        console.log(error);
+        // respond with window ethereum provider
+        // @ts-expect-error - window.ethereum is not typed
+        return window.ethereum!;
+      }
     },
   }));
 }

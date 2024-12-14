@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import OpenAI from 'openai';
 
 const GRAPHQL_ENDPOINT = 'https://public.zapper.xyz/graphql';
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Assistant ID for Base Wrapped
+const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID;
 
 interface GraphQLResponse {
   data: {
@@ -234,6 +243,60 @@ async function saveToS3Cache(key: string, data: unknown) {
   }
 }
 
+async function getAnalysisFromOpenAI(transactions: unknown, address: string) {
+  let threadId: string | undefined;
+  try {
+    // Create a thread
+    const thread = await openai.beta.threads.create();
+    threadId = thread.id;
+
+    // Add a message to the thread
+    await openai.beta.threads.messages.create(thread.id, {
+      role: "user",
+      content: JSON.stringify({
+        address,
+        transactions
+      })
+    });
+
+    // Run the assistant
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: ASSISTANT_ID!,
+    });
+
+    // Wait for the run to complete
+    let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+    while (runStatus.status !== 'completed') {
+      if (runStatus.status === 'failed') {
+        throw new Error('Assistant run failed');
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+    }
+
+    // Get the messages
+    const messages = await openai.beta.threads.messages.list(thread.id);
+    const lastMessage = messages.data[0];
+
+    // Parse the assistant's response
+    console.log(JSON.stringify(lastMessage, null, 2));
+    const analysis = JSON.parse(lastMessage.content[0].type === 'text' ? lastMessage.content[0].text.value : '');
+    return analysis;
+  } catch (error) {
+    console.error('Error getting analysis from OpenAI:', error);
+    throw error;
+  } finally {
+    // Clean up the thread
+    if (threadId) {
+      try {
+        await openai.beta.threads.del(threadId);
+      } catch (cleanupError) {
+        console.error('Error cleaning up thread:', cleanupError);
+      }
+    }
+  }
+}
+
 export async function POST(request: Request) {
   try {
     if (!isValidApiKey(request)) {
@@ -252,26 +315,33 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if we have cached data in S3
-    const cacheKey = `wrapped-2024-raw/${address.toLowerCase()}.json`;
-    const cachedData = await getFromS3Cache(cacheKey);
+    // Check if we have cached analysis in S3
+    const analysisCacheKey = `wrapped-2024-analysis/${address.toLowerCase()}.json`;
+    const cachedAnalysis = await getFromS3Cache(analysisCacheKey);
     
-    if (cachedData) {
-      console.log('Cache hit for address:', address);
-      sendDataToAnalysis(cachedData, address);
-      return NextResponse.json({ transactions: cachedData });
+    if (cachedAnalysis) {
+      console.log('Analysis cache hit for address:', address);
+      return NextResponse.json({ analysis: cachedAnalysis });
     }
 
-    // Fetch new data from Zapper
-    const transactions = await fetchTransactionsFromZapper(address);
+    // Check if we have cached raw transactions
+    const rawCacheKey = `wrapped-2024-raw/${address.toLowerCase()}.json`;
+    let transactions = await getFromS3Cache(rawCacheKey);
+    
+    if (!transactions) {
+      // Fetch new data from Zapper
+      transactions = await fetchTransactionsFromZapper(address);
+      // Store the raw transactions in S3
+      await saveToS3Cache(rawCacheKey, transactions);
+    }
 
-    // Store the results in S3
-    await saveToS3Cache(cacheKey, transactions);
+    // Get analysis from OpenAI
+    const analysis = await getAnalysisFromOpenAI(transactions, address);
 
-    // send the data to run analysis
-    await sendDataToAnalysis(transactions, address);
+    // Store the analysis in S3
+    await saveToS3Cache(analysisCacheKey, analysis);
 
-    return NextResponse.json({ transactions });
+    return NextResponse.json({ analysis });
   } catch (error) {
     console.error('Error processing request:', error);
     return NextResponse.json(
