@@ -9,7 +9,14 @@ import { analyzeWrapped } from './actions';
 import 'swiper/css';
 import 'swiper/css/effect-cards';
 
+interface TitleCard {
+  type: 'title';
+  title: string;
+  description: string;
+}
+
 interface AnalysisItem {
+  type?: 'analysis';
   symbol?: string;
   name: string;
   stat: string;
@@ -22,6 +29,21 @@ interface Analysis {
   popularActions: AnalysisItem[];
   popularUsers: AnalysisItem[];
   otherStories: AnalysisItem[];
+}
+
+type CardItem = TitleCard | (AnalysisItem & { type: 'analysis' });
+
+function TitleCard({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="analysis-card min-h-[400px] flex flex-col items-center justify-center text-center px-8">
+      <h2 className="text-4xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+        {title}
+      </h2>
+      <p className="text-xl text-gray-600 leading-relaxed">
+        {description}
+      </p>
+    </div>
+  );
 }
 
 function AnalysisCard({ item }: { item: AnalysisItem }) {
@@ -47,6 +69,13 @@ function AnalysisCard({ item }: { item: AnalysisItem }) {
   );
 }
 
+function Card({ item }: { item: CardItem }) {
+  if (item.type === 'title') {
+    return <TitleCard title={item.title} description={item.description} />;
+  }
+  return <AnalysisCard item={item} />;
+}
+
 export default function Home() {
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
@@ -68,12 +97,39 @@ export default function Home() {
     }
   };
 
-  // Flatten all analysis items into a single array for the swiper
-  const allItems = analysis ? [
-    ...analysis.popularTokens,
-    ...analysis.popularActions,
-    ...analysis.popularUsers,
-    ...analysis.otherStories
+  // Create an array with title cards and analysis items
+  const allItems: CardItem[] = analysis ? [
+    // Popular Tokens Section
+    {
+      type: 'title',
+      title: 'Popular Tokens',
+      description: "Discover the tokens that defined your journey on Base"
+    },
+    ...analysis.popularTokens.map(item => ({ ...item, type: 'analysis' as const })),
+    
+    // Popular Actions Section
+    {
+      type: 'title',
+      title: 'Your Actions',
+      description: "A look at how you've been interacting with Base"
+    },
+    ...analysis.popularActions.map(item => ({ ...item, type: 'analysis' as const })),
+    
+    // Popular Users Section
+    {
+      type: 'title',
+      title: 'Your Network',
+      description: "The addresses you've interacted with the most"
+    },
+    ...analysis.popularUsers.map(item => ({ ...item, type: 'analysis' as const })),
+    
+    // Other Stories Section
+    {
+      type: 'title',
+      title: 'Highlights',
+      description: "Special moments from your Base journey"
+    },
+    ...analysis.otherStories.map(item => ({ ...item, type: 'analysis' as const })),
   ] : [];
 
   return (
@@ -118,7 +174,7 @@ export default function Home() {
             >
               {allItems.map((item, index) => (
                 <SwiperSlide key={index}>
-                  <AnalysisCard item={item} />
+                  <Card item={item} />
                 </SwiperSlide>
               ))}
             </Swiper>
