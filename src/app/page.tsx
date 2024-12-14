@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCards } from 'swiper/modules';
 import { analyzeWrapped } from './actions';
+import Image from 'next/image';
 
 // Import Swiper styles
 import 'swiper/css';
@@ -23,6 +24,7 @@ interface AnalysisItem {
   stat: string;
   description: string;
   category?: string;
+  imgUrl?: string;
 }
 
 interface Analysis {
@@ -52,9 +54,26 @@ function AnalysisCard({ item }: { item: AnalysisItem }) {
   return (
     <div className="analysis-card min-h-[400px] flex flex-col justify-between">
       <div>
-        <h3 className="text-3xl font-bold mb-6 text-gray-800">
-          {item.symbol || item.name}
-        </h3>
+        <div className="flex items-center gap-4 mb-6">
+          {item.imgUrl && (
+            <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-gray-100">
+              <Image
+                src={item.imgUrl} 
+                alt={item.name}
+                width={48}
+                height={48}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Hide the image on error
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+          <h3 className="text-3xl font-bold text-gray-800">
+            {item.symbol || item.name}
+          </h3>
+        </div>
         <div className="text-lg font-medium text-gray-600 mb-4">
           {item.stat}
         </div>
