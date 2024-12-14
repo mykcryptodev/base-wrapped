@@ -1,13 +1,16 @@
 'use server';
 
 export async function analyzeWrapped(address: string) {
-  // Construct base URL properly
+  // Always ensure we have a protocol in the URL
   const baseUrl = process.env.VERCEL_URL 
     ? `https://${process.env.VERCEL_URL}` 
     : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
+  // Ensure baseUrl has protocol
+  const apiUrl = new URL('/api/analyze-wrapped', baseUrl).toString();
+
   try {
-    const response = await fetch(`${baseUrl}/api/analyze-wrapped`, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
