@@ -3,24 +3,16 @@ import App from "~/app/app";
 
 const appUrl = process.env.APP_URL;
 
-interface Props {
-  params: Promise<{
-    name: string;
-  }>;
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { name } = await params;
-
+export async function generateMetadata(): Promise<Metadata> {
   const frame = {
     version: "next",
-    imageUrl: `${appUrl}/frames/hello/${name}/opengraph-image`,
+    imageUrl: `${appUrl}/frames/hello/opengraph-image`,
     button: {
       title: "Launch Frame",
       action: {
         type: "launch_frame",
         name: "Base Wrapped 2024",
-        url: `${appUrl}/frames/hello/${name}/`,
+        url: `${appUrl}/`,
         splashImageUrl: `${appUrl}/splash.png`,
         splashBackgroundColor: "#f7f7f7",
       },
@@ -40,8 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function HelloNameFrame({ params }: Props) {
-  const { name } = await params;
-
+export default async function HelloNameFrame() {
   return <App title={`Base Wrapped 2024`} />;
 }
+
