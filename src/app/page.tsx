@@ -46,9 +46,9 @@ function TitleCard({ title, description, icon, showIdentity, address }: { title:
   return (
     <div className="analysis-card h-[400px] flex flex-col items-center justify-center text-center px-8">
       {showIdentity && (
-        <div className="mb-8 grid grid-cols-1 gap-4">
+        <div className="mb-4 grid grid-cols-1 gap-2">
           <div className="rounded-full overflow-hidden mx-auto bg-gray-100">
-            <Avatar address={address ?? zeroAddress} size={128} className="rounded-full w-32 h-32 mx-auto" />
+            <Avatar address={address ?? zeroAddress} size={64} className="rounded-full w-16 h-16 mx-auto" />
           </div>
           <div className="text-xl text-center font-bold text-gray-800">
             {address ? <Name address={address} /> : 'Unknown'}
@@ -72,12 +72,12 @@ function AnalysisCard({ item }: { item: AnalysisItem }) {
       <div>
         <div className="flex items-center gap-4 mb-6">
           {item.imgUrl && (
-            <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-gray-100">
+            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-gray-100">
               <Image
                 src={item.imgUrl} 
                 alt={item.name}
-                width={48}
-                height={48}
+                width={32}
+                height={32}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   // Hide the image on error
@@ -316,8 +316,8 @@ export default function Home() {
         <div className="flex justify-center items-center w-full gap-2 text-gray-500 text-sm block text-center mb-8">
           <span className="text-lg">built by</span> 
           <div className="flex items-center gap-1">
-            <div className="rounded-full overflow-hidden bg-gray-100 w-8 h-8">
-              <Avatar address="0x653Ff253b0c7C1cc52f484e891b71f9f1F010Bfb" size={32} className="rounded-full" />
+            <div className="rounded-full overflow-hidden bg-gray-100 w-6 h-6">
+              <Avatar address="0x653Ff253b0c7C1cc52f484e891b71f9f1F010Bfb" size={24} className="rounded-full" />
             </div>
             <Link href="https://warpcast.com/myk" target="_blank" className="text-lg font-bold text-blue-600 hover:text-blue-700 transition-colors">myk.eth</Link>
           </div>

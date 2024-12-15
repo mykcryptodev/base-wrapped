@@ -45,7 +45,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" style={{ overflowX: 'hidden', maxWidth: '100vw' }}>
       <body>
         <Providers>{children}</Providers>
       </body>
