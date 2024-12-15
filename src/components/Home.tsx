@@ -451,7 +451,16 @@ export default function Home() {
               <input
                 type="text"
                 value={inputAddress}
-                onChange={(e) => setInputAddress(e.target.value as `0x${string}`)}
+                onChange={(e) => {
+                  // Clear analysis and search params when user starts typing a new address
+                  if (analysis) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('a');
+                    router.replace(url.pathname + url.search);
+                    setAnalysis(null);
+                  }
+                  setInputAddress(e.target.value as `0x${string}`);
+                }}
                 onBlur={(e) => setInputAddress(e.target.value as `0x${string}`)}
                 placeholder="Enter address or name"
                 autoComplete="off"
