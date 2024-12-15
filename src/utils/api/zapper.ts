@@ -121,7 +121,7 @@ export async function fetchTransactionsFromZapper(address: string) {
       variables: {
         addresses: [address],
         isSigner: true,
-        realtimeInterpretation: false,
+        realtimeInterpretation: true,
         network: "BASE_MAINNET",
         first: 75,
         after: cursor
