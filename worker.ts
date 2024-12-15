@@ -149,7 +149,6 @@ jobQueue.process(async (job) => {
       const delay = Math.min(1000 * Math.pow(2, attempts), 30000); // Exponential backoff
       await job.update({ delay: Date.now() + delay }); // Manually delay the job
       console.log(`Retrying job ${job.id} attempt ${attempts + 1} in ${delay}ms`);
-      console.log(`Retrying job ${job.id} attempt ${attempts + 1} in ${delay}ms`);
     } else {
       throw error; // Only throw after max retries
     }
