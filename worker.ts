@@ -5,6 +5,7 @@ import { getFromS3Cache, saveToS3Cache } from './src/utils/api/s3';
 import { getAnalysisFromOpenAI } from './src/utils/api/openai';
 import { getUserNotificationDetails } from "./src/lib/kv";
 import { sendFrameNotification } from "./src/lib/notifs";
+import { JobStatusClean } from 'bull';
 
 console.log('Starting worker process...');
 console.log('Environment check:', {
@@ -14,6 +15,14 @@ console.log('Environment check:', {
 
 const jobQueue = getQueue();
 const activeJobs = new Set<string>();
+
+// Clean up old jobs on startup
+const TWENTY_MINUTES = 20 * 60 * 1000;
+console.log('Cleaning up old jobs (older than 20 minutes)...');
+await jobQueue.clean(TWENTY_MINUTES, 'wait');
+await jobQueue.clean(TWENTY_MINUTES, 'active');
+await jobQueue.clean(TWENTY_MINUTES, 'failed');
+console.log('Cleanup complete');
 
 // Process jobs in the queue
 jobQueue.process(async (job) => {
