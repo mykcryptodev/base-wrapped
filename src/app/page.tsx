@@ -13,6 +13,7 @@ import 'swiper/css/effect-cards';
 import { Avatar, Name } from '@paperclip-labs/whisk-sdk/identity';
 import { isAddress, zeroAddress } from 'viem';
 import Link from 'next/link';
+import { truncateAddress } from '~/lib/truncateAddress';
 
 interface TitleCard {
   showIdentity?: boolean;
@@ -43,7 +44,7 @@ type CardItem = TitleCard | (AnalysisItem & { type: 'analysis' });
 
 function TitleCard({ title, description, icon, showIdentity, address }: { title: string; description: string; icon?: string; showIdentity?: boolean; address?: `0x${string}` }) {
   return (
-    <div className="analysis-card min-h-[400px] flex flex-col items-center justify-center text-center px-8">
+    <div className="analysis-card h-[400px] flex flex-col items-center justify-center text-center px-8">
       {showIdentity && (
         <div className="mb-8 grid grid-cols-1 gap-4">
           <div className="rounded-full overflow-hidden mx-auto bg-gray-100">
@@ -67,7 +68,7 @@ function TitleCard({ title, description, icon, showIdentity, address }: { title:
 
 function AnalysisCard({ item }: { item: AnalysisItem }) {
   return (
-    <div className="analysis-card min-h-[400px] flex flex-col justify-between">
+    <div className="analysis-card min-h-[400px] flex flex-col">
       <div>
         <div className="flex items-center gap-4 mb-6">
           {item.imgUrl && (
@@ -97,7 +98,7 @@ function AnalysisCard({ item }: { item: AnalysisItem }) {
         </p>
       </div>
       {item.category && (
-        <div className="mt-4 inline-block px-4 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-medium w-fit">
+        <div className="mt-auto pt-4 inline-block px-4 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-medium w-fit">
           {item.category.toLowerCase()}
         </div>
       )}
@@ -212,7 +213,7 @@ export default function Home() {
       : ((loadingState?.step || 0) / (loadingState?.totalSteps || 1) * 100);
     
     return (
-      <div className="analysis-card min-h-[400px] flex flex-col items-center justify-center text-center px-8">
+      <div className="analysis-card h-[400px] flex flex-col items-center justify-center text-center px-8">
         <div className="mb-8">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -323,7 +324,7 @@ export default function Home() {
         </div>
         
         <form onSubmit={handleSubmit} className="mb-12">
-          <div className="flex gap-4 max-w-xl mx-auto items-start items-stretch">
+          <div className="flex flex-col md:flex-row gap-4 max-w-xl mx-auto items-start items-stretch">
             <input
               type="text"
               value={inputAddress}
@@ -342,7 +343,9 @@ export default function Home() {
             </button>
           </div>
           {resolvedAddress && (
-            <span className="text-gray-500 text-sm mt-2 block text-center md:pr-8">{resolvedAddress}</span>
+            <span className="text-gray-500 text-sm mt-2 block text-center md:pr-8">
+              {truncateAddress(resolvedAddress)}
+            </span>
           )}
         </form>
 

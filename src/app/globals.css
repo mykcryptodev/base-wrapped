@@ -42,7 +42,17 @@ body {
 }
 
 *::-webkit-scrollbar {
-  display: none;
+  width: 4px;
+  height: 0; /* Hide horizontal scrollbar */
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
 }
 
 .swiper {
@@ -91,6 +101,8 @@ body {
   transform: translateZ(0);
   transition: all 0.2s ease;
   padding: 2rem;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .analysis-card:hover {
