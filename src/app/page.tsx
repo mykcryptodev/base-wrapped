@@ -12,6 +12,7 @@ import 'swiper/css';
 import 'swiper/css/effect-cards';
 import { Avatar, Name } from '@paperclip-labs/whisk-sdk/identity';
 import { isAddress, zeroAddress } from 'viem';
+import Link from 'next/link';
 
 interface TitleCard {
   showIdentity?: boolean;
@@ -120,6 +121,7 @@ interface LoadingState {
     current: number;
     total: number;
   };
+  pollAttempts?: number;
 }
 
 export default function Home() {
@@ -147,24 +149,29 @@ export default function Home() {
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [error, setError] = useState('');
+  const [pollAttempts, setPollAttempts] = useState(0);
 
   const pollForResults = async (address: string) => {
     try {
-      const data = await analyzeWrapped(address);
+      const data = await analyzeWrapped(address, pollAttempts);
       
       if (data.status === 'complete') {
         setAnalysis(data.analysis);
         setLoadingState(null);
         setLoading(false);
+        setPollAttempts(0);
         return;
       }
 
-      // Update loading state
+      setPollAttempts(prev => prev + 1);
+
       setLoadingState({
         status: data.status,
         message: data.message,
         step: data.step,
-        totalSteps: data.totalSteps
+        totalSteps: data.totalSteps,
+        progress: data.progress,
+        pollAttempts: pollAttempts + 1
       });
 
       // Poll again in 5 seconds
@@ -173,6 +180,7 @@ export default function Home() {
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setLoading(false);
       setLoadingState(null);
+      setPollAttempts(0);
     }
   };
 
@@ -293,9 +301,26 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="max-w-4xl mx-auto p-8">
-        <h1 className="text-5xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-blue-800 to-purple-600">
+        <Image
+          priority
+          src="/splash.png"
+          alt="Base Wrapped Logo"
+          width={128}
+          height={128}
+          className="w-24 h-24 mx-auto"
+        />
+        <h1 className="text-5xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-blue-500 to-purple-600 tracking-tighter">
           Base Wrapped 2024
         </h1>
+        <div className="flex justify-center items-center w-full gap-2 text-gray-500 text-sm block text-center mb-8">
+          <span className="text-lg">built by</span> 
+          <div className="flex items-center gap-1">
+            <div className="rounded-full overflow-hidden bg-gray-100 w-8 h-8">
+              <Avatar address="0x653Ff253b0c7C1cc52f484e891b71f9f1F010Bfb" size={32} className="rounded-full" />
+            </div>
+            <Link href="https://warpcast.com/myk" target="_blank" className="text-lg font-bold text-blue-600 hover:text-blue-700 transition-colors">myk.eth</Link>
+          </div>
+        </div>
         
         <form onSubmit={handleSubmit} className="mb-12">
           <div className="flex gap-4 max-w-xl mx-auto items-start items-stretch">

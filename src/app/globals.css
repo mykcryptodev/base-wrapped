@@ -16,10 +16,24 @@
   }
 }
 
+@font-face {
+  font-family: 'Segment';
+  src: url('/fonts/Segment-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Segment';
+  src: url('/fonts/Segment-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: 'Inter', Helvetica, Arial, sans-serif;
+  font-family: 'Segment', sans-serif;
 }
 
 * {

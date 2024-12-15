@@ -3,7 +3,7 @@
 import { isAddress, zeroAddress, isAddressEqual } from "viem";
 import { getAddressFromName } from "~/lib/getAddressFromName";
 
-export async function analyzeWrapped(address: string) {
+export async function analyzeWrapped(address: string, pollAttempts: number = 0) {
   // Validate address
   if (!address) throw new Error('Address is required')
 
@@ -25,7 +25,7 @@ export async function analyzeWrapped(address: string) {
         'Content-Type': 'application/json',
         'x-api-key': process.env.API_ROUTE_SECRET!
       },
-      body: JSON.stringify({ address })
+      body: JSON.stringify({ address, pollAttempts })
     })
 
     if (!response.ok) {

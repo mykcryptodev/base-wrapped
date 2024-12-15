@@ -3,6 +3,49 @@ import { isValidApiKey } from '~/utils/api/validate';
 import { getFromS3Cache } from '~/utils/api/s3';
 import { activeAnalyses, analysisProgress } from '~/utils/api/openai';
 import { isAddressEqual, zeroAddress } from 'viem';
+
+function getFetchingMessage(pollAttempts: number): string {
+  if (pollAttempts > 30) {
+    return "Wow, you've been really active on Base! Still working on fetching all your transactions...";
+  }
+  if (pollAttempts > 20) {
+    return "This is taking longer than usual. You must have been busy on Base!";
+  }
+  if (pollAttempts > 10) {
+    return "Still fetching your transactions... You've done quite a bit on Base!";
+  }
+  if (pollAttempts > 5) {
+    return "We're still working on fetching your transactions...";
+  }
+  return "Fetching your transaction history...";
+}
+
+function getAnalyzingMessage(pollAttempts: number, chunkProgress?: { currentChunk: number, totalChunks: number }): string {
+  console.log({
+    pollAttempts,
+    chunkProgress,
+    totalChunks: chunkProgress?.totalChunks,
+    currentChunk: chunkProgress?.currentChunk,
+  })
+  if (chunkProgress) {
+    return `Analyzing transaction batch ${chunkProgress.currentChunk + 1} of ${chunkProgress.totalChunks + 1}...`;
+  }
+  
+  if (pollAttempts > 20) {
+    return "Our AI is fascinated by your transaction history! Still analyzing...";
+  }
+  if (pollAttempts > 15) {
+    return "There's a lot to analyze here! The AI is working hard...";
+  }
+  if (pollAttempts > 10) {
+    return "Still crunching the numbers... You've had an interesting year!";
+  }
+  if (pollAttempts > 5) {
+    return "The AI is carefully analyzing your transactions...";
+  }
+  return "Analyzing your transactions with AI...";
+}
+
 export async function POST(request: Request) {
   try {
     if (!isValidApiKey(request)) {
@@ -12,7 +55,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { address, fid } = await request.json();
+    const { address, fid, pollAttempts = 0 } = await request.json();
 
     if (!address || typeof address !== 'string') {
       return NextResponse.json(
@@ -56,7 +99,7 @@ export async function POST(request: Request) {
       if (!hasCachedTransactions) {
         return NextResponse.json({
           status: 'fetching',
-          message: 'Fetching your transaction history...',
+          message: getFetchingMessage(pollAttempts),
           step: 1,
           totalSteps: 3
         });
@@ -65,9 +108,7 @@ export async function POST(request: Request) {
       // If we have transactions, we're analyzing
       return NextResponse.json({
         status: 'analyzing',
-        message: chunkProgress 
-          ? `Analyzing transaction batch ${chunkProgress.currentChunk + 1} of ${chunkProgress.totalChunks + 1}...`
-          : 'Analyzing your transactions with AI...',
+        message: getAnalyzingMessage(pollAttempts, chunkProgress),
         step: 2,
         totalSteps: 3,
         progress: chunkProgress ? {
@@ -118,8 +159,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       status,
       message: status === 'analyzing' 
-        ? 'Starting analysis of your transactions...'
-        : 'Fetching your transaction history... (Step 1 of 3)',
+        ? getAnalyzingMessage(pollAttempts)
+        : getFetchingMessage(pollAttempts),
       step,
       totalSteps: 3
     });
