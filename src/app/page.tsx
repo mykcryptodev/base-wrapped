@@ -6,12 +6,13 @@ import { EffectCards } from 'swiper/modules';
 import { analyzeWrapped } from './actions';
 import Image from 'next/image';
 import { getAddressFromName } from '~/lib/getAddressFromName';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 // Import Swiper styles
 import 'swiper/css';
 import 'swiper/css/effect-cards';
 import { Avatar, Name } from '@paperclip-labs/whisk-sdk/identity';
-import { isAddress, zeroAddress } from 'viem';
+import { zeroAddress } from 'viem';
 import Link from 'next/link';
 import { truncateAddress } from '~/lib/truncateAddress';
 import Share from '~/components/Share';
@@ -128,6 +129,8 @@ interface LoadingState {
 }
 
 export default function Home() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [inputAddress, setInputAddress] = useState<`0x${string}`>();
   const debouncedInputAddress = useDebounce(inputAddress, 500);
   const [resolvedAddress, setResolvedAddress] = useState<`0x${string}`>();
@@ -147,6 +150,21 @@ export default function Home() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [error, setError] = useState('');
   const [pollAttempts, setPollAttempts] = useState(0);
+
+  useEffect(() => {
+    const addressParam = searchParams.get('a');
+    if (addressParam && !inputAddress) {
+      setInputAddress(addressParam as `0x${string}`);
+    }
+  }, [searchParams, inputAddress]);
+
+  useEffect(() => {
+    if (resolvedAddress) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('a', resolvedAddress);
+      router.replace(url.pathname + url.search);
+    }
+  }, [resolvedAddress, router]);
 
   const pollForResults = async (address: string) => {
     try {
@@ -181,25 +199,52 @@ export default function Home() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const startAnalysis = async (address: string) => {
     setLoading(true);
     setError('');
     setAnalysis(null);
+    
+    try {
+      // Make initial analysis request
+      const data = await analyzeWrapped(address, 0);
+      
+      if (data.status === 'complete') {
+        setAnalysis(data.analysis);
+        setLoadingState(null);
+        setLoading(false);
+        return;
+      }
 
-    // Check if we have a resolved address
+      setLoadingState({
+        status: data.status,
+        message: data.message,
+        step: data.step,
+        totalSteps: data.totalSteps,
+        progress: data.progress,
+        pollAttempts: 0
+      });
+
+      // Start polling if not complete
+      pollForResults(address);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setLoading(false);
+      setLoadingState(null);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!resolvedAddress) {
       setError('Please enter a valid address or ENS name');
-      setLoading(false);
       return;
     }
 
-    // Use the resolved address directly
-    pollForResults(resolvedAddress);
+    startAnalysis(resolvedAddress);
   };
 
   function LoadingCard() {
-    const isAnalyzing = loadingState?.status === 'analyzing';
     const progress = loadingState?.progress;
     
     // Calculate the overall progress percentage
@@ -245,7 +290,7 @@ export default function Home() {
     {
       showIdentity: true,
       type: 'title',
-      title: 'Your Base 2024 Wrapped',
+      title: `Base 2024 Wrapped`,
       description: "Let's take a journey through your year on Base. We've analyzed your transactions to uncover some interesting insights about your onchain activity. Swipe to begin! →"
     },
 
@@ -294,6 +339,23 @@ export default function Home() {
       description: "Thank you for being part of the Base ecosystem in 2024. Here's to an even more exciting 2025 filled with new achievements and milestones. Keep building! 🚀"
     },
   ] : [];
+
+  // Add this effect to handle automatic analysis on page load
+  useEffect(() => {
+    const addressParam = searchParams.get('a');
+    if (addressParam && !loading && !analysis) {
+      getAddressFromName(addressParam).then((resolved) => {
+        if (resolved) {
+          setInputAddress(addressParam as `0x${string}`);
+          setResolvedAddress(resolved as `0x${string}`);
+          startAnalysis(resolved as string);
+        }
+      }).catch((err) => {
+        console.error(err);
+        setError('Invalid address or ENS name');
+      });
+    }
+  }, [searchParams]); // Only run on initial load and when search params change
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
