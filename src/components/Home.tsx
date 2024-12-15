@@ -447,16 +447,32 @@ export default function Home() {
         
         <form onSubmit={handleSubmit} className="mb-12">
           <div className="flex flex-col md:flex-row gap-4 max-w-xl mx-auto items-start items-stretch">
-            <input
-              type="text"
-              value={inputAddress}
-              onChange={(e) => setInputAddress(e.target.value as `0x${string}`)}
-              onBlur={(e) => setInputAddress(e.target.value as `0x${string}`)}
-              placeholder="Enter address or name"
-              autoComplete="off"
-              disabled={loading}
-              className="flex-1 p-4 border rounded-xl text-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-50"
-            />
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={inputAddress}
+                onChange={(e) => setInputAddress(e.target.value as `0x${string}`)}
+                onBlur={(e) => setInputAddress(e.target.value as `0x${string}`)}
+                placeholder="Enter address or name"
+                autoComplete="off"
+                disabled={loading}
+                className="w-full p-4 border rounded-xl text-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-50"
+              />
+              {inputAddress && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInputAddress(undefined);
+                    setResolvedAddress(undefined);
+                    setAnalysis(null);
+                    setError('');
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
             <button
               type="submit"
               disabled={loading || !resolvedAddress}
