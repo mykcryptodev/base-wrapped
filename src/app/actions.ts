@@ -1,25 +1,14 @@
 'use server';
 
-import { resolveAddress, BASENAME_RESOLVER_ADDRESS } from "thirdweb/extensions/ens";
-import { createThirdwebClient } from "thirdweb";
 import { isAddress, zeroAddress, isAddressEqual } from "viem";
-import { base } from "thirdweb/chains";
-
-const thirdwebClient = createThirdwebClient({
-  clientId: process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID!,
-});
+import { getAddressFromName } from "~/lib/getAddressFromName";
 
 export async function analyzeWrapped(address: string) {
   // Validate address
   if (!address) throw new Error('Address is required')
 
   if (!isAddress(address)) {
-    const resolvedAddress = await resolveAddress({
-      name: address,
-      client: thirdwebClient,
-      resolverChain: base,
-      resolverAddress: BASENAME_RESOLVER_ADDRESS,
-    });
+    const resolvedAddress = await getAddressFromName(address);
     address = resolvedAddress as `0x${string}`;
   }
 

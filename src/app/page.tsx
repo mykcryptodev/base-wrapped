@@ -5,22 +5,13 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCards } from 'swiper/modules';
 import { analyzeWrapped } from './actions';
 import Image from 'next/image';
+import { getAddressFromName } from '~/lib/getAddressFromName';
 
 // Import Swiper styles
 import 'swiper/css';
 import 'swiper/css/effect-cards';
 import { Avatar, Name } from '@paperclip-labs/whisk-sdk/identity';
 import { isAddress, zeroAddress } from 'viem';
-import { createThirdwebClient } from 'thirdweb';
-import { base } from 'thirdweb/chains';
-import {
-  resolveAddress,
-  BASENAME_RESOLVER_ADDRESS,
-} from "thirdweb/extensions/ens";
-
-const thirdwebClient = createThirdwebClient({
-  clientId: process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID!,
-});
 
 interface TitleCard {
   showIdentity?: boolean;
@@ -142,12 +133,7 @@ export default function Home() {
         setResolvedAddress(inputAddress as `0x${string}`);
       } else {
         try {
-          const resolved = await resolveAddress({
-            name: inputAddress as string,
-            client: thirdwebClient,
-            resolverChain: base,
-            resolverAddress: BASENAME_RESOLVER_ADDRESS,
-          });
+          const resolved = await getAddressFromName(inputAddress as string);
           setResolvedAddress(resolved as `0x${string}`);
         } catch (err) {
           console.error(err);
@@ -196,18 +182,15 @@ export default function Home() {
     setError('');
     setAnalysis(null);
 
-    let addr = inputAddress ?? resolvedAddress;
-    if (isAddress(resolvedAddress as string)) {
-      setResolvedAddress(resolvedAddress as `0x${string}`);
-    } else {
-      addr = await resolveAddress({
-        name: resolvedAddress as string,
-        client: thirdwebClient,
-        resolverChain: base,
-        resolverAddress: BASENAME_RESOLVER_ADDRESS,
-      });
+    // Check if we have a resolved address
+    if (!resolvedAddress) {
+      setError('Please enter a valid address or ENS name');
+      setLoading(false);
+      return;
     }
-    pollForResults(addr as string);
+
+    // Use the resolved address directly
+    pollForResults(resolvedAddress);
   };
 
   function LoadingCard() {
@@ -315,7 +298,7 @@ export default function Home() {
         </h1>
         
         <form onSubmit={handleSubmit} className="mb-12">
-          <div className="flex gap-4 max-w-xl mx-auto">
+          <div className="flex gap-4 max-w-xl mx-auto items-start items-stretch">
             <input
               type="text"
               value={inputAddress}
@@ -333,7 +316,11 @@ export default function Home() {
               {loading ? 'Loading...' : 'Analyze'}
             </button>
           </div>
+          {resolvedAddress && (
+            <span className="text-gray-500 text-sm mt-2 block text-center md:pr-8">{resolvedAddress}</span>
+          )}
         </form>
+
 
         {error && (
           <div className="text-red-500 mb-4 text-center">
