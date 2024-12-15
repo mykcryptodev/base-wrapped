@@ -14,6 +14,7 @@ import { Avatar, Name } from '@paperclip-labs/whisk-sdk/identity';
 import { isAddress, zeroAddress } from 'viem';
 import Link from 'next/link';
 import { truncateAddress } from '~/lib/truncateAddress';
+import Share from '~/components/Share';
 
 interface TitleCard {
   showIdentity?: boolean;
@@ -313,7 +314,7 @@ export default function Home() {
         <h1 className="text-5xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-blue-500 to-purple-600 tracking-tighter">
           Base Wrapped 2024
         </h1>
-        <div className="flex justify-center items-center w-full gap-2 text-gray-500 text-sm block text-center mb-8">
+        <div className="flex justify-center items-center w-full gap-2 text-gray-500 text-sm block text-center mb-2">
           <span className="text-lg">built by</span> 
           <div className="flex items-center gap-1">
             <div className="rounded-full overflow-hidden bg-gray-100 w-6 h-6">
@@ -322,6 +323,12 @@ export default function Home() {
             <Link href="https://warpcast.com/myk" target="_blank" className="text-lg font-bold text-blue-600 hover:text-blue-700 transition-colors">myk.eth</Link>
           </div>
         </div>
+
+        <p className="text-gray-500 text-sm mt-4 text-center mb-4 max-w-sm text-center mx-auto">
+          Discover what you did onchain in 2024! Look back on your swaps, mints, sends, and more!
+        </p>
+
+        <Share />
         
         <form onSubmit={handleSubmit} className="mb-12">
           <div className="flex flex-col md:flex-row gap-4 max-w-xl mx-auto items-start items-stretch">
