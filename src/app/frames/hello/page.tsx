@@ -11,7 +11,7 @@ const frame = {
     action: {
       type: "launch_frame",
       name: "Base Wrapped 2024",
-      url: `${appUrl}/frames/hello/`,
+      url: `${appUrl}`,
       splashImageUrl: `${appUrl}/splash.png`,
       splashBackgroundColor: "#f7f7f7",
     },
