@@ -455,6 +455,10 @@ export default function Home() {
                 onBlur={(e) => setInputAddress(e.target.value as `0x${string}`)}
                 placeholder="Enter address or name"
                 autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-form-type="other"
                 disabled={loading}
                 className="w-full p-4 border rounded-xl text-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-50"
               />
@@ -462,12 +466,16 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => {
-                    setInputAddress(undefined);
+                    // clear the search params
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('a');
+                    router.replace(url.pathname + url.search);
+                    setInputAddress("" as `0x${string}`);
                     setResolvedAddress(undefined);
                     setAnalysis(null);
                     setError('');
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-gray-100 rounded-full px-3 py-1"
                 >
                   ✕
                 </button>
