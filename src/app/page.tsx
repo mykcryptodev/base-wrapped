@@ -244,7 +244,7 @@ export default function Home() {
         </p>
         {isAnalyzing && (
           <p className="text-sm text-gray-500 mt-2">
-            You can bookmark this page and come back later. Your results will be ready when you return.
+            You can leave this page and come back later. Your results will be ready when you return.
           </p>
         )}
       </div>
