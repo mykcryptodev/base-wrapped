@@ -5,16 +5,16 @@ import { activeAnalyses, analysisProgress } from '~/utils/api/openai';
 import { isAddressEqual, zeroAddress } from 'viem';
 
 function getFetchingMessage(pollAttempts: number): string {
-  if (pollAttempts > 30) {
+  if (pollAttempts > 12) {
     return "Wow, you've been really active on Base! Still working on fetching all your transactions...";
   }
-  if (pollAttempts > 20) {
+  if (pollAttempts > 9) {
     return "This is taking longer than usual. You must have been busy on Base!";
   }
-  if (pollAttempts > 10) {
+  if (pollAttempts > 6) {
     return "Still fetching your transactions... You've done quite a bit on Base!";
   }
-  if (pollAttempts > 5) {
+  if (pollAttempts > 3) {
     return "We're still working on fetching your transactions...";
   }
   return "Fetching your transaction history...";

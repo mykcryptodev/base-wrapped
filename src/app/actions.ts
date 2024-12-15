@@ -17,6 +17,8 @@ export async function analyzeWrapped(address: string, pollAttempts: number = 0) 
     throw new Error('Cannot analyze zero address')
   }
 
+  console.log('pollAttempts', pollAttempts);
+
   try {
     const analyzeUrl = new URL('/api/analyze-wrapped', process.env.APP_URL!).toString();
     const response = await fetch(analyzeUrl, {

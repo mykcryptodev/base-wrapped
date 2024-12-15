@@ -230,7 +230,7 @@ export default function Home() {
             </span>
           )}
         </p>
-        {isAnalyzing && (
+        {pollAttempts > 0 && (
           <p className="text-sm text-gray-500 mt-2">
             You can leave this page and come back later. Your results will be ready when you return.
           </p>
