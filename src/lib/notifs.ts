@@ -29,7 +29,7 @@ export async function sendFrameNotification({
         notificationId: `${fid}-${Date.now()}`,
         title,
         body,
-        targetUrl: process.env.NEXT_PUBLIC_HOST,
+        targetUrl: process.env.APP_URL,
         tokens: [details.token],
       }),
     });
