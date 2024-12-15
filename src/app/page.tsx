@@ -135,20 +135,27 @@ export default function Home() {
   const [inputAddress, setInputAddress] = useState<`0x${string}`>();
   const [resolvedAddress, setResolvedAddress] = useState<`0x${string}`>();
   useEffect(() => {
-    if (isAddress(inputAddress as string)) {
-      setResolvedAddress(inputAddress as `0x${string}`);
-    } else {
-      resolveAddress({
-        name: inputAddress as string,
-        client: thirdwebClient,
-        resolverChain: base,
-        resolverAddress: BASENAME_RESOLVER_ADDRESS,
-      }).then((resolvedAddress) => {
-        setResolvedAddress(resolvedAddress as `0x${string}`);
-      }).catch((err) => {
-        console.error(err);
-      });
-    }
+    const debounceTimeout = setTimeout(async () => {
+      if (!inputAddress) return;
+
+      if (isAddress(inputAddress as string)) {
+        setResolvedAddress(inputAddress as `0x${string}`);
+      } else {
+        try {
+          const resolved = await resolveAddress({
+            name: inputAddress as string,
+            client: thirdwebClient,
+            resolverChain: base,
+            resolverAddress: BASENAME_RESOLVER_ADDRESS,
+          });
+          setResolvedAddress(resolved as `0x${string}`);
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    }, 500); // 500ms debounce delay
+
+    return () => clearTimeout(debounceTimeout);
   }, [inputAddress]);
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
