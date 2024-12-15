@@ -7,12 +7,13 @@ import { analyzeWrapped } from './actions';
 import Image from 'next/image';
 import { getAddressFromName } from '~/lib/getAddressFromName';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useAccount } from 'wagmi';
 
 // Import Swiper styles
 import 'swiper/css';
 import 'swiper/css/effect-cards';
 import { Avatar, Name } from '@paperclip-labs/whisk-sdk/identity';
-import { zeroAddress } from 'viem';
+import { isAddressEqual, zeroAddress } from 'viem';
 import Link from 'next/link';
 import { truncateAddress } from '~/lib/truncateAddress';
 import Share from '~/components/Share';
@@ -130,6 +131,7 @@ interface LoadingState {
 }
 
 export default function Home() {
+  const { address } = useAccount();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [inputAddress, setInputAddress] = useState<`0x${string}`>();
@@ -359,6 +361,10 @@ export default function Home() {
     }
   }, [searchParams]); // Only run on initial load and when search params change
 
+  const setConnectedAddress = (address: `0x${string}`) => {
+    setInputAddress(address);
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="max-w-4xl mx-auto p-8">
@@ -413,6 +419,14 @@ export default function Home() {
             <span className="text-gray-500 text-sm mt-2 block text-center md:pr-8">
               {truncateAddress(resolvedAddress)}
             </span>
+          )}
+          {address && !isAddressEqual(address, (resolvedAddress ?? zeroAddress)) && (
+            <button 
+              onClick={() => setConnectedAddress(address)} 
+              className="text-xs mx-auto bg-blue-600 text-white rounded-xl px-4 py-2 mt-2 block text-center"
+            >
+              Set your address
+            </button>
           )}
         </form>
 
