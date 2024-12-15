@@ -35,6 +35,7 @@ export async function sendFrameNotification({
     });
 
     const data = await response.json();
+    console.log({ webhookData: JSON.stringify(data, null, 2) });
 
     if (data.result.successfulTokens.includes(details.token)) {
       return { state: "success" };
