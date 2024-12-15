@@ -123,7 +123,7 @@ export async function fetchTransactionsFromZapper(address: string) {
         isSigner: true,
         realtimeInterpretation: false,
         network: "BASE_MAINNET",
-        first: 50,
+        first: 75,
         after: cursor
       }
     };

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { fetchTransactionsFromZapper } from '~/utils/api/zapper';
 import { getFromS3Cache, saveToS3Cache } from '~/utils/api/s3';
 import { isValidApiKey } from '~/utils/api/validate';
-import { activeAnalyses, getAnalysisFromOpenAI } from '~/utils/api/openai';
+import { activeAnalyses, analysisProgress, getAnalysisFromOpenAI } from '~/utils/api/openai';
 import { getUserNotificationDetails } from "~/lib/kv";
 import { sendFrameNotification } from "~/lib/notifs";
 import { isAddressEqual } from 'viem';
@@ -38,10 +38,35 @@ export async function POST(request: Request) {
 
     // Check if analysis is already in progress
     if (activeAnalyses.has(normalizedAddress)) {
-      console.log(`Analysis already in progress for ${normalizedAddress}, skipping duplicate request`);
-      return NextResponse.json({ 
-        status: 'processing',
-        message: 'Analysis already in progress'
+      console.log(`Analysis already in progress for ${normalizedAddress}`);
+      const chunkProgress = analysisProgress.get(normalizedAddress);
+      
+      // Get cached transactions to determine the actual state
+      const rawCacheKey = `wrapped-2024-raw/${normalizedAddress}.json`;
+      const hasCachedTransactions = await getFromS3Cache(rawCacheKey);
+      
+      // If we don't have transactions yet, we're still in fetching state
+      if (!hasCachedTransactions) {
+        return NextResponse.json({
+          status: 'fetching',
+          message: 'Fetching your transaction history...',
+          step: 1,
+          totalSteps: 3
+        });
+      }
+      
+      // If we have transactions, we're analyzing
+      return NextResponse.json({
+        status: 'analyzing',
+        message: chunkProgress 
+          ? `Analyzing transaction batch ${chunkProgress.currentChunk + 1} of ${chunkProgress.totalChunks + 1}...`
+          : 'Analyzing your transactions with AI...',
+        step: 2,
+        totalSteps: 3,
+        progress: chunkProgress ? {
+          current: chunkProgress.currentChunk,
+          total: chunkProgress.totalChunks
+        } : undefined
       });
     }
 
@@ -98,6 +123,9 @@ async function processInBackground(address: string, fid?: number) {
     } else {
       console.log(`Using ${transactions.length} cached transactions`);
     }
+
+    // Small delay to ensure cache is propagated
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Get analysis from OpenAI
     console.log('Starting OpenAI analysis');

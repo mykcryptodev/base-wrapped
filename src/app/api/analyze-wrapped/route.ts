@@ -48,6 +48,21 @@ export async function POST(request: Request) {
       console.log(`Analysis already in progress for ${normalizedAddress}`);
       const chunkProgress = analysisProgress.get(normalizedAddress);
       
+      // Get cached transactions to determine the actual state
+      const rawCacheKey = `wrapped-2024-raw/${normalizedAddress}.json`;
+      const hasCachedTransactions = await getFromS3Cache(rawCacheKey);
+      
+      // If we don't have transactions yet, we're still in fetching state
+      if (!hasCachedTransactions) {
+        return NextResponse.json({
+          status: 'fetching',
+          message: 'Fetching your transaction history...',
+          step: 1,
+          totalSteps: 3
+        });
+      }
+      
+      // If we have transactions, we're analyzing
       return NextResponse.json({
         status: 'analyzing',
         message: chunkProgress 
