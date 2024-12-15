@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { truncateAddress } from '~/lib/truncateAddress';
 import Share from '~/components/Share';
 import useDebounce from '~/hooks/useDebounce';
+import Frame from '~/components/Frame';
 
 interface TitleCard {
   showIdentity?: boolean;
@@ -448,6 +449,7 @@ export default function Home() {
           )}
         </div>
       </div>
+      <Frame />
     </main>
   );
 }
