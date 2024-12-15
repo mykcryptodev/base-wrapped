@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCards } from 'swiper/modules';
-import { analyzeWrapped } from './actions';
+import { analyzeWrapped, getJobStatus } from './actions';
 import Image from 'next/image';
 import { getAddressFromName } from '~/lib/getAddressFromName';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -184,6 +184,18 @@ export default function Home() {
       const nextAttempt = currentAttempts + 1;
       setPollAttempts(nextAttempt);
 
+      // If we have a job ID, use it to get status
+      if (data.jobId) {
+        const jobStatus = await getJobStatus(data.jobId);
+        if (jobStatus.status === 'complete') {
+          setAnalysis(jobStatus.result.analysis);
+          setLoadingState(null);
+          setLoading(false);
+          setPollAttempts(0);
+          return;
+        }
+      }
+
       setLoadingState({
         status: data.status,
         message: data.message,
@@ -273,11 +285,6 @@ export default function Home() {
         </div>
         <p className="text-gray-600 mb-4">
           Step {loadingState?.step} of {loadingState?.totalSteps}
-          {progress && (
-            <span className="ml-2">
-              (Chunk {progress.current} of {progress.total})
-            </span>
-          )}
         </p>
         {pollAttempts > 0 && (
           <p className="text-sm text-gray-500 mt-2">

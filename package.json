@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "worker": "ts-node -P tsconfig.worker.json worker.ts",
+    "worker:dev": "nodemon",
     "lint": "next lint"
   },
   "dependencies": {
@@ -17,12 +19,16 @@
     "@types/next": "^9.0.0",
     "@upstash/redis": "^1.34.3",
     "@vercel/blob": "^0.27.0",
+    "bull": "^4.16.4",
+    "dotenv": "^16.4.7",
     "next": "15.0.3",
     "openai": "^4.76.3",
     "react": "19.0.0-rc-66855b96-20241106",
     "react-dom": "19.0.0-rc-66855b96-20241106",
+    "socket.io": "^4.8.1",
     "swiper": "^11.1.15",
     "thirdweb": "^5.78.0",
+    "ts-node": "^10.9.2",
     "viem": "2.x",
     "wagmi": "^2.13.0"
   },
@@ -32,6 +38,7 @@
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "15.0.3",
+    "nodemon": "^3.1.9",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"

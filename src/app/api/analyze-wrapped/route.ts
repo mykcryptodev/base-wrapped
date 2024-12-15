@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isValidApiKey } from '~/utils/api/validate';
 import { getFromS3Cache } from '~/utils/api/s3';
-import { activeAnalyses, analysisProgress } from '~/utils/api/openai';
 import { isAddressEqual, zeroAddress } from 'viem';
 
 function getFetchingMessage(pollAttempts: number): string {
@@ -36,12 +35,6 @@ function getFetchingMessage(pollAttempts: number): string {
 }
 
 function getAnalyzingMessage(pollAttempts: number, chunkProgress?: { currentChunk: number, totalChunks: number }): string {
-  console.log({
-    pollAttempts,
-    chunkProgress,
-    totalChunks: chunkProgress?.totalChunks,
-    currentChunk: chunkProgress?.currentChunk,
-  })
   if (chunkProgress) {
     return `Analyzing transaction batch ${chunkProgress.currentChunk + 1} of ${chunkProgress.totalChunks + 1}...`;
   }
@@ -110,83 +103,33 @@ export async function POST(request: Request) {
       });
     }
 
-    // Check if analysis is already in progress
-    if (activeAnalyses.has(normalizedAddress)) {
-      console.log(`Analysis already in progress for ${normalizedAddress}`);
-      const chunkProgress = analysisProgress.get(normalizedAddress);
-      
-      // Get cached transactions to determine the actual state
-      const rawCacheKey = `wrapped-2024-raw/${normalizedAddress}.json`;
-      const hasCachedTransactions = await getFromS3Cache(rawCacheKey);
-      
-      // If we don't have transactions yet, we're still in fetching state
-      if (!hasCachedTransactions) {
-        return NextResponse.json({
-          status: 'fetching',
-          message: getFetchingMessage(pollAttempts),
-          step: 1,
-          totalSteps: 3
-        });
-      }
-      
-      // If we have transactions, we're analyzing
-      return NextResponse.json({
-        status: 'analyzing',
-        message: getAnalyzingMessage(pollAttempts, chunkProgress),
-        step: 2,
-        totalSteps: 3,
-        progress: chunkProgress ? {
-          current: chunkProgress.currentChunk,
-          total: chunkProgress.totalChunks
-        } : undefined
-      });
+    // Start or get status of job
+    const jobResponse = await fetch(new URL('/api/start-job', process.env.APP_URL!).toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.API_ROUTE_SECRET!
+      },
+      body: JSON.stringify({ address: normalizedAddress, fid })
+    });
+
+    if (!jobResponse.ok) {
+      throw new Error('Failed to start job');
     }
 
-    // Check if we have cached raw transactions
-    const rawCacheKey = `wrapped-2024-raw/${normalizedAddress}.json`;
-    let transactions;
-    let status: 'fetching' | 'analyzing' = 'fetching';
-    let step = 1;
-    
-    try {
-      transactions = await getFromS3Cache(rawCacheKey);
-      if (transactions) {
-        status = 'analyzing';
-        step = 2;
-      }
-    } catch (error) {
-      console.error('Error getting transactions from S3:', error);
-    }
-    
-    // Start the background process
-    activeAnalyses.add(normalizedAddress);
-    console.log(`Starting analysis for ${normalizedAddress}`);
-    
-    try {
-      const processUrl = new URL(`/api/process-wrapped`, process.env.APP_URL!).toString();
-      fetch(processUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.API_ROUTE_SECRET!
-        },
-        body: JSON.stringify({ address: normalizedAddress, fid })
-      }).catch((error) => {
-        console.error('Error triggering background process:', error);
-        activeAnalyses.delete(normalizedAddress);
-      });
-    } catch (error) {
-      console.error('Error triggering background process:', error);
-      activeAnalyses.delete(normalizedAddress);
-    }
+    const jobData = await jobResponse.json();
+    const { jobId, status, progress } = jobData;
 
+    // Return appropriate message based on status
     return NextResponse.json({
+      jobId,
       status,
       message: status === 'analyzing' 
-        ? getAnalyzingMessage(pollAttempts)
+        ? getAnalyzingMessage(pollAttempts, progress?.chunkProgress)
         : getFetchingMessage(pollAttempts),
-      step,
-      totalSteps: 3
+      step: progress?.step || 1,
+      totalSteps: progress?.totalSteps || 3,
+      progress: progress?.chunkProgress
     });
 
   } catch (error) {

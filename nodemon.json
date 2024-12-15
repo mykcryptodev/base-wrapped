@@ -1,0 +1,6 @@
+{
+  "watch": ["worker.ts", "src"],
+  "ext": ".ts,.js",
+  "ignore": [],
+  "exec": "ts-node --project tsconfig.worker.json worker.ts"
+} 
