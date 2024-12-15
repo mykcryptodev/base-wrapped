@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { getAddressFromName } from '~/lib/getAddressFromName';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAccount } from 'wagmi';
+import { Metadata } from "next";
 
 // Import Swiper styles
 import 'swiper/css';
@@ -43,6 +44,37 @@ interface Analysis {
   popularActions: AnalysisItem[];
   popularUsers: AnalysisItem[];
   otherStories: AnalysisItem[];
+}
+
+const appUrl = process.env.APP_URL;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const frame = {
+    version: "next",
+    imageUrl: `${appUrl}/frames/hello/opengraph-image`,
+    button: {
+      title: "Launch Frame",
+      action: {
+        type: "launch_frame",
+        name: "Base Wrapped 2024",
+        url: `${appUrl}/`,
+        splashImageUrl: `${appUrl}/splash.png`,
+        splashBackgroundColor: "#f7f7f7",
+      },
+    },
+  };
+
+  return {
+    title: `Base Wrapped 2024`,
+    description: `Discover your onchain activity in 2024!`,
+    openGraph: {
+      title: `Base Wrapped 2024`,
+      description: `Discover your onchain activity in 2024!`,
+    },
+    other: {
+      "fc:frame": JSON.stringify(frame),
+    },
+  };
 }
 
 type CardItem = TitleCard | (AnalysisItem & { type: 'analysis' });
