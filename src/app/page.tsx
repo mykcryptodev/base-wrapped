@@ -44,7 +44,7 @@ type CardItem = TitleCard | (AnalysisItem & { type: 'analysis' });
 
 function TitleCard({ title, description, icon, showIdentity, address }: { title: string; description: string; icon?: string; showIdentity?: boolean; address?: `0x${string}` }) {
   return (
-    <div className="analysis-card h-[400px] flex flex-col items-center justify-center text-center px-8">
+    <div className={`analysis-card h-[400px] flex flex-col items-center justify-center text-center px-8 ${showIdentity ? '!block md:flex' : 'flex'}`}>
       {showIdentity && (
         <div className="mb-4 grid grid-cols-1 gap-2">
           <div className="rounded-full overflow-hidden mx-auto bg-gray-100">
@@ -68,7 +68,7 @@ function TitleCard({ title, description, icon, showIdentity, address }: { title:
 
 function AnalysisCard({ item }: { item: AnalysisItem }) {
   return (
-    <div className="analysis-card min-h-[400px] flex flex-col">
+    <div className="analysis-card min-h-[400px] flex flex-col overflow-y-auto block md:flex">
       <div>
         <div className="flex items-center gap-4 mb-6">
           {item.imgUrl && (
@@ -98,7 +98,7 @@ function AnalysisCard({ item }: { item: AnalysisItem }) {
         </p>
       </div>
       {item.category && (
-        <div className="mt-auto pt-4 inline-block px-4 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-medium w-fit">
+        <div className="mt-auto mt-4 inline-block px-4 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-medium w-fit">
           {item.category.toLowerCase()}
         </div>
       )}
