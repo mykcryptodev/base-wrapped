@@ -2,7 +2,7 @@
 
 import { resolveAddress, BASENAME_RESOLVER_ADDRESS } from "thirdweb/extensions/ens";
 import { createThirdwebClient } from "thirdweb";
-import { isAddress } from "viem";
+import { isAddress, zeroAddress, isAddressEqual } from "viem";
 import { base } from "thirdweb/chains";
 
 const thirdwebClient = createThirdwebClient({
@@ -12,6 +12,11 @@ const thirdwebClient = createThirdwebClient({
 export async function analyzeWrapped(address: string) {
   // Validate address
   if (!address) throw new Error('Address is required')
+
+  // Add zero address check
+  if (isAddressEqual(address as `0x${string}`, zeroAddress)) {
+    throw new Error('Cannot analyze zero address')
+  }
 
   if (!isAddress(address)) {
     const resolvedAddress = await resolveAddress({

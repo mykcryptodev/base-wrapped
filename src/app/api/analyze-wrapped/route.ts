@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { isValidApiKey } from '~/utils/api/validate';
 import { getFromS3Cache } from '~/utils/api/s3';
 import { activeAnalyses, analysisProgress } from '~/utils/api/openai';
-
+import { isAddressEqual, zeroAddress } from 'viem';
 export async function POST(request: Request) {
   try {
     if (!isValidApiKey(request)) {
@@ -22,6 +22,14 @@ export async function POST(request: Request) {
     }
 
     const normalizedAddress = address.toLowerCase();
+    
+    // Add zero address check
+    if (isAddressEqual(normalizedAddress as `0x${string}`, zeroAddress)) {
+      return NextResponse.json(
+        { error: 'Cannot analyze zero address' },
+        { status: 400 }
+      );
+    }
 
     // Check if we have cached analysis in S3
     const analysisCacheKey = `wrapped-2024-analysis/${normalizedAddress}.json`;

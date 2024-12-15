@@ -5,6 +5,8 @@ import { isValidApiKey } from '~/utils/api/validate';
 import { activeAnalyses, getAnalysisFromOpenAI } from '~/utils/api/openai';
 import { getUserNotificationDetails } from "~/lib/kv";
 import { sendFrameNotification } from "~/lib/notifs";
+import { isAddressEqual } from 'viem';
+import { zeroAddress } from 'viem';
 
 export async function POST(request: Request) {
   try {
@@ -25,6 +27,14 @@ export async function POST(request: Request) {
     }
 
     const normalizedAddress = address.toLowerCase();
+
+    // Add zero address check
+    if (isAddressEqual(normalizedAddress as `0x${string}`, zeroAddress)) {
+      return NextResponse.json(
+        { error: 'Cannot analyze zero address' },
+        { status: 400 }
+      );
+    }
 
     // Check if analysis is already in progress
     if (activeAnalyses.has(normalizedAddress)) {
