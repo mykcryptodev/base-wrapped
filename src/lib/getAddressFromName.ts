@@ -12,6 +12,8 @@ const thirdwebClient = createThirdwebClient({
 
 export async function getAddressFromName(name: string) {
   let resolvedAddress = null;
+  // lowercase the name
+  name = name.toLowerCase();
   try {
     resolvedAddress = await resolveAddressOnBase(name);
   } catch (error) {
