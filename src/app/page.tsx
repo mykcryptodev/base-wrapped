@@ -166,9 +166,9 @@ export default function Home() {
     }
   }, [resolvedAddress, router]);
 
-  const pollForResults = async (address: string) => {
+  const pollForResults = async (address: string, currentAttempts: number = 0) => {
     try {
-      const data = await analyzeWrapped(address, pollAttempts);
+      const data = await analyzeWrapped(address, currentAttempts);
       
       if (data.status === 'complete') {
         setAnalysis(data.analysis);
@@ -178,7 +178,8 @@ export default function Home() {
         return;
       }
 
-      setPollAttempts(prev => prev + 1);
+      const nextAttempt = currentAttempts + 1;
+      setPollAttempts(nextAttempt);
 
       setLoadingState({
         status: data.status,
@@ -186,11 +187,11 @@ export default function Home() {
         step: data.step,
         totalSteps: data.totalSteps,
         progress: data.progress,
-        pollAttempts: pollAttempts + 1
+        pollAttempts: nextAttempt
       });
 
-      // Poll again in 5 seconds
-      setTimeout(() => pollForResults(address), 5000);
+      // Pass the incremented attempts count to the next call
+      setTimeout(() => pollForResults(address, nextAttempt), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setLoading(false);
@@ -404,7 +405,7 @@ export default function Home() {
               disabled={loading || !resolvedAddress}
               className="px-8 py-4 bg-blue-600 text-white rounded-xl disabled:opacity-50 hover:bg-blue-700 transition-colors shadow-sm"
             >
-              {loading ? 'Loading...' : 'Analyze'}
+              {loading ? 'Loading...' : 'Wrap!'}
             </button>
           </div>
           {resolvedAddress && (
