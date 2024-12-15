@@ -9,7 +9,7 @@ export async function analyzeWrapped(address: string, pollAttempts: number = 0) 
 
   if (!isAddress(address)) {
     const resolvedAddress = await getAddressFromName(address);
-    address = resolvedAddress as `0x${string}`;
+    address = !resolvedAddress ? address : resolvedAddress as `0x${string}`;
   }
 
   // Add zero address check

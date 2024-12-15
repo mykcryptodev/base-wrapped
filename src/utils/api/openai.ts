@@ -49,7 +49,7 @@ async function analyzeTransactionChunk(chunk: unknown, index: number, totalChunk
       if (runStatus.status === 'failed') {
         throw new Error('Assistant run failed');
       }
-      console.log({runStatus, runId: run.id, threadId: thread.id});
+      console.log({ runId: run.id, threadId: thread.id});
       await new Promise(resolve => setTimeout(resolve, 1000));
       runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
     }
