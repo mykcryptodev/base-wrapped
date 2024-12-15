@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCards } from 'swiper/modules';
 import { analyzeWrapped, getJobStatus } from './actions';
@@ -147,6 +147,7 @@ export default function Home() {
     } catch (err) {
       console.error(err);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedInputAddress]);
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
@@ -169,7 +170,7 @@ export default function Home() {
     }
   }, [resolvedAddress, router]);
 
-  const pollForResults = async (address: string, currentAttempts: number = 0) => {
+  const pollForResults = useCallback(async (address: string, currentAttempts: number = 0) => {
     try {
       const data = await analyzeWrapped(address, currentAttempts);
       
@@ -213,9 +214,9 @@ export default function Home() {
       setLoadingState(null);
       setPollAttempts(0);
     }
-  };
+  }, [setAnalysis, setLoadingState, setLoading, setPollAttempts, setError]);
 
-  const startAnalysis = async (address: string) => {
+  const startAnalysis = useCallback(async (address: string) => {
     setLoading(true);
     setError('');
     setAnalysis(null);
@@ -247,7 +248,7 @@ export default function Home() {
       setLoading(false);
       setLoadingState(null);
     }
-  };
+  }, [pollForResults]); // Add pollForResults as a dependency
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -300,54 +301,64 @@ export default function Home() {
     // Intro Card
     {
       showIdentity: true,
-      type: 'title',
+      type: "title" as const,
       title: `Base 2024 Wrapped`,
-      description: "Let's take a journey through your year on Base. We've analyzed your transactions to uncover some interesting insights about your onchain activity. Swipe to begin! →"
+      description: analysis.otherStories.some(story => story.name === "No Activity Found")
+        ? "Let's check out your activity on Base..."
+        : "Let's take a journey through your year on Base. We've analyzed your transactions to uncover some interesting insights about your onchain activity. Swipe to begin! →"
     },
 
-    // Popular Tokens Section
-    {
-      type: 'title',
-      icon: '🪙',
-      title: 'Popular Tokens',
-      description: "Discover the tokens that defined your journey on Base"
-    },
-    ...analysis.popularTokens.map(item => ({ ...item, type: 'analysis' as const })),
+    // Only show sections if there are items
+    ...(analysis.popularTokens.length > 0 ? [
+      {
+        type: 'title' as const,
+        icon: '🪙',
+        title: 'Popular Tokens',
+        description: "Discover the tokens that defined your journey on Base"
+      },
+      ...analysis.popularTokens.map(item => ({ ...item, type: 'analysis' as const }))
+    ] : []),
     
-    // Popular Actions Section
-    {
-      type: 'title',
-      icon: '⚡',
-      title: 'Your Actions',
-      description: "A look at how you've been interacting with Base"
-    },
-    ...analysis.popularActions.map(item => ({ ...item, type: 'analysis' as const })),
+    ...(analysis.popularActions.length > 0 ? [
+      {
+        type: 'title' as const,
+        icon: '⚡',
+        title: 'Your Actions',
+        description: "A look at how you've been interacting with Base"
+      },
+      ...analysis.popularActions.map(item => ({ ...item, type: 'analysis' as const }))
+    ] : []),
     
-    // Popular Users Section
-    {
-      type: 'title',
-      icon: '🤝',
-      title: 'Your Network',
-      description: "The addresses you've interacted with the most"
-    },
-    ...analysis.popularUsers.map(item => ({ ...item, type: 'analysis' as const })),
+    ...(analysis.popularUsers.length > 0 ? [
+      {
+        type: 'title' as const,
+        icon: '🤝',
+        title: 'Your Network',
+        description: "The addresses you've interacted with the most"
+      },
+      ...analysis.popularUsers.map(item => ({ ...item, type: 'analysis' as const }))
+    ] : []),
     
-    // Other Stories Section
+    // Always show other stories as it contains the "No Activity" message if needed
     {
-      type: 'title',
+      type: 'title' as const,
       icon: '✨',
-      title: 'Highlights',
-      description: "Special moments from your Base journey"
+      title: analysis.otherStories.some(story => story.name === "No Activity Found") ? 'No Activity Yet' : 'Highlights',
+      description: analysis.otherStories.some(story => story.name === "No Activity Found")
+        ? "We couldn't find any transactions yet"
+        : "Special moments from your Base journey"
     },
     ...analysis.otherStories.map(item => ({ ...item, type: 'analysis' as const })),
 
-    // Final Card
+    // Final Card - customize based on activity
     {
       showIdentity: true,
-      type: 'title',
+      type: 'title' as const,
       icon: '🎊',
-      title: 'Happy New Year!',
-      description: "Thank you for being part of the Base ecosystem in 2024. Here's to an even more exciting 2025 filled with new achievements and milestones. Keep building! 🚀"
+      title: analysis.otherStories.some(story => story.name === "No Activity Found") ? 'Start Your Journey!' : 'Happy New Year!',
+      description: analysis.otherStories.some(story => story.name === "No Activity Found")
+        ? "Ready to start your journey on Base? Visit base.org to learn more about getting started with Base!"
+        : "Thank you for being part of the Base ecosystem in 2024. Here's to an even more exciting 2025 filled with new achievements and milestones. Keep building! 🚀"
     },
   ] : [];
 
@@ -366,6 +377,7 @@ export default function Home() {
         setError('Invalid address or ENS name');
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]); // Only run on initial load and when search params change
 
   const setConnectedAddress = (address: `0x${string}`) => {

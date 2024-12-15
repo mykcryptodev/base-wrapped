@@ -1,15 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getQueue } from '~/lib/queue';
 import { isValidApiKey } from '~/utils/api/validate';
 
 export async function GET(
-  req: Request,
+  req: NextRequest,
   context: { params: { jobId: string } }
 ) {
-  const params = await Promise.resolve(context.params);
-  
   try {
-    console.log('Received job status request for job:', params.jobId);
+    console.log('Received job status request for job:', context.params.jobId);
 
     if (!isValidApiKey(req)) {
       console.log('API key validation failed');
@@ -19,7 +17,7 @@ export async function GET(
       );
     }
     
-    const { jobId } = params;
+    const { jobId } = context.params;
     const jobQueue = getQueue();
     const job = await jobQueue.getJob(jobId);
     

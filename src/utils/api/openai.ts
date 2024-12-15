@@ -23,19 +23,18 @@ function chunkTransactions(transactions: unknown[], chunkSize = 200) {
 }
 
 // Modified function to analyze chunks
-async function analyzeTransactionChunk(chunk: unknown, index: number, totalChunks: number) {
-  console.log(`
-    
-    
-    ====ANALAZING A CHUNK ${index} of ${totalChunks}====
+async function analyzeTransactionChunk(chunk: unknown, index: number, totalChunks: number, retryCount = 0) {
+  const MAX_RETRIES = 5;
+  const delay = (attempt: number) => Math.min(1000 * Math.pow(2, attempt), 30000);
+  let thread;
 
-
-
-    `)
-  // Create a new thread for this chunk
-  const thread = await openai.beta.threads.create();
-  
   try {
+    console.log(`
+    ====ANALYZING CHUNK ${index} of ${totalChunks} (Attempt ${retryCount + 1}/${MAX_RETRIES})====
+    `);
+    
+    thread = await openai.beta.threads.create();
+    
     await openai.beta.threads.messages.create(thread.id, {
       role: "user",
       content: `Please analyze this batch of transactions and provide insights: ${JSON.stringify(chunk)}`
@@ -58,12 +57,21 @@ async function analyzeTransactionChunk(chunk: unknown, index: number, totalChunk
     const messages = await openai.beta.threads.messages.list(thread.id);
     const lastMessage = messages.data[0];
     return lastMessage.content[0].type === 'text' ? lastMessage.content[0].text.value : '';
+  } catch (error) {
+    if (retryCount < MAX_RETRIES - 1) {
+      console.log(`Chunk ${index} failed, retrying in ${delay(retryCount)}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay(retryCount)));
+      return analyzeTransactionChunk(chunk, index, totalChunks, retryCount + 1);
+    }
+    throw error;
   } finally {
     // Clean up the thread
-    try {
-      await openai.beta.threads.del(thread.id);
-    } catch (error) {
-      console.error('Error cleaning up chunk thread:', error);
+    if (thread) {
+      try {
+        await openai.beta.threads.del(thread.id);
+      } catch (error) {
+        console.error('Error cleaning up chunk thread:', error);
+      }
     }
   }
 }

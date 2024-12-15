@@ -13,13 +13,21 @@ console.log('Environment check:', {
 });
 
 const jobQueue = getQueue();
+const activeJobs = new Set<string>();
 
 // Process jobs in the queue
 jobQueue.process(async (job) => {
   const { address, fid } = job.data;
   const normalizedAddress = address.toLowerCase();
   
+  // Check if job is already being processed
+  if (activeJobs.has(normalizedAddress)) {
+    console.log(`Job already in progress for ${normalizedAddress}, skipping`);
+    return job.moveToCompleted();
+  }
+  
   try {
+    activeJobs.add(normalizedAddress);
     console.log(`Processing job ${job.id} for address ${normalizedAddress}`);
     
     // Update status to fetching
@@ -37,9 +45,25 @@ jobQueue.process(async (job) => {
     if (!transactions) {
       console.log('Fetching transactions from Zapper...');
       transactions = await fetchTransactionsFromZapper(normalizedAddress);
+      
       if (!transactions || transactions.length === 0) {
-        throw new Error('No transactions found');
+        console.log('No transactions found for address:', normalizedAddress);
+        return {
+          status: 'complete',
+          analysis: {
+            popularTokens: [],
+            popularActions: [],
+            popularUsers: [],
+            otherStories: [{
+              name: "No Activity Found",
+              stat: "0 transactions",
+              description: "We couldn't find any transactions for this address on Base in 2024. This could mean you haven't made any transactions yet, or you might be using a different address.",
+              category: "info"
+            }]
+          }
+        };
       }
+      
       // Store the raw transactions in S3
       await saveToS3Cache(rawCacheKey, transactions);
       console.log('Saved transactions to S3');
@@ -96,7 +120,17 @@ jobQueue.process(async (job) => {
     return { status: 'complete', analysis };
   } catch (error) {
     console.error(`Error processing job ${job.id}:`, error);
-    throw error;
+    // Instead of throwing, retry the same job
+    const attempts = job.attemptsMade;
+    if (attempts < 5) { // Max 5 retries
+      const delay = Math.min(1000 * Math.pow(2, attempts), 30000); // Exponential backoff
+      await job.retry(); // Remove arguments since retry() expects 0 args
+      console.log(`Retrying job ${job.id} attempt ${attempts + 1} in ${delay}ms`);
+    } else {
+      throw error; // Only throw after max retries
+    }
+  } finally {
+    activeJobs.delete(normalizedAddress);
   }
 });
 
