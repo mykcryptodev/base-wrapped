@@ -5,7 +5,6 @@ import { getFromS3Cache, saveToS3Cache } from './src/utils/api/s3';
 import { getAnalysisFromOpenAI } from './src/utils/api/openai';
 import { getUserNotificationDetails } from "./src/lib/kv";
 import { sendFrameNotification } from "./src/lib/notifs";
-import { JobStatusClean } from 'bull';
 
 console.log('Starting worker process...');
 console.log('Environment check:', {
@@ -24,8 +23,20 @@ await jobQueue.clean(TWENTY_MINUTES, 'active');
 await jobQueue.clean(TWENTY_MINUTES, 'failed');
 console.log('Cleanup complete');
 
+const fetchWithTimeout = async (promise: Promise<any>, timeoutMs: number) => {
+  const timeout = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Operation timeout')), timeoutMs)
+  );
+  return Promise.race([promise, timeout]);
+};
+
 // Process jobs in the queue
 jobQueue.process(async (job) => {
+  // Add a timeout wrapper
+  const timeout = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Job timeout')), 10 * 60 * 1000) // 10 minutes
+  );
+  
   const { address, fid } = job.data;
   const normalizedAddress = address.toLowerCase();
   
@@ -53,7 +64,10 @@ jobQueue.process(async (job) => {
     // If no cached transactions, fetch from Zapper
     if (!transactions) {
       console.log('Fetching transactions from Zapper...');
-      transactions = await fetchTransactionsFromZapper(normalizedAddress);
+      transactions = await fetchWithTimeout(
+        fetchTransactionsFromZapper(normalizedAddress),
+        300000 // 5 minute timeout
+      );
       
       if (!transactions || transactions.length === 0) {
         console.log('No transactions found for address:', normalizedAddress);
@@ -133,7 +147,8 @@ jobQueue.process(async (job) => {
     const attempts = job.attemptsMade;
     if (attempts < 5) { // Max 5 retries
       const delay = Math.min(1000 * Math.pow(2, attempts), 30000); // Exponential backoff
-      await job.retry(); // Remove arguments since retry() expects 0 args
+      await job.update({ delay: Date.now() + delay }); // Manually delay the job
+      console.log(`Retrying job ${job.id} attempt ${attempts + 1} in ${delay}ms`);
       console.log(`Retrying job ${job.id} attempt ${attempts + 1} in ${delay}ms`);
     } else {
       throw error; // Only throw after max retries
@@ -165,4 +180,16 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-console.log('Worker ready to process jobs'); 
+console.log('Worker ready to process jobs');
+
+jobQueue.on('failed', async (job, error) => {
+  console.error(`Job ${job.id} failed:`, error);
+  const normalizedAddress = job.data.address.toLowerCase();
+  activeJobs.delete(normalizedAddress);
+});
+
+jobQueue.on('stalled', async (job) => {
+  console.error(`Job ${job.id} stalled`);
+  const normalizedAddress = job.data.address.toLowerCase();
+  activeJobs.delete(normalizedAddress);
+}); 
