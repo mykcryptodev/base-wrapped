@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCards } from 'swiper/modules';
 import { analyzeWrapped } from './actions';
@@ -10,7 +10,17 @@ import Image from 'next/image';
 import 'swiper/css';
 import 'swiper/css/effect-cards';
 import { Avatar, Name } from '@paperclip-labs/whisk-sdk/identity';
-import { zeroAddress } from 'viem';
+import { isAddress, zeroAddress } from 'viem';
+import { createThirdwebClient } from 'thirdweb';
+import { base } from 'thirdweb/chains';
+import {
+  resolveAddress,
+  BASENAME_RESOLVER_ADDRESS,
+} from "thirdweb/extensions/ens";
+
+const thirdwebClient = createThirdwebClient({
+  clientId: process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID!,
+});
 
 interface TitleCard {
   showIdentity?: boolean;
@@ -44,7 +54,7 @@ function TitleCard({ title, description, icon, showIdentity, address }: { title:
     <div className="analysis-card min-h-[400px] flex flex-col items-center justify-center text-center px-8">
       {showIdentity && (
         <div className="mb-8 grid grid-cols-1 gap-4">
-          <div className="rounded-full overflow-hidden mx-auto">
+          <div className="rounded-full overflow-hidden mx-auto bg-gray-100">
             <Avatar address={address ?? zeroAddress} size={128} className="rounded-full w-32 h-32 mx-auto" />
           </div>
           <div className="text-xl text-center font-bold text-gray-800">
@@ -122,7 +132,24 @@ interface LoadingState {
 }
 
 export default function Home() {
-  const [address, setAddress] = useState<`0x${string}`>();
+  const [inputAddress, setInputAddress] = useState<`0x${string}`>();
+  const [resolvedAddress, setResolvedAddress] = useState<`0x${string}`>();
+  useEffect(() => {
+    if (isAddress(inputAddress as string)) {
+      setResolvedAddress(inputAddress as `0x${string}`);
+    } else {
+      resolveAddress({
+        name: inputAddress as string,
+        client: thirdwebClient,
+        resolverChain: base,
+        resolverAddress: BASENAME_RESOLVER_ADDRESS,
+      }).then((resolvedAddress) => {
+        setResolvedAddress(resolvedAddress as `0x${string}`);
+      }).catch((err) => {
+        console.error(err);
+      });
+    }
+  }, [inputAddress]);
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -161,8 +188,19 @@ export default function Home() {
     setLoading(true);
     setError('');
     setAnalysis(null);
-    
-    pollForResults(address as string);
+
+    let addr = inputAddress ?? resolvedAddress;
+    if (isAddress(resolvedAddress as string)) {
+      setResolvedAddress(resolvedAddress as `0x${string}`);
+    } else {
+      addr = await resolveAddress({
+        name: resolvedAddress as string,
+        client: thirdwebClient,
+        resolverChain: base,
+        resolverAddress: BASENAME_RESOLVER_ADDRESS,
+      });
+    }
+    pollForResults(addr as string);
   };
 
   function LoadingCard() {
@@ -273,8 +311,8 @@ export default function Home() {
           <div className="flex gap-4 max-w-xl mx-auto">
             <input
               type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value as `0x${string}`)}
+              value={inputAddress}
+              onChange={(e) => setInputAddress(e.target.value as `0x${string}`)}
               placeholder="Enter Ethereum address"
               autoComplete="off"
               disabled={loading}
@@ -282,7 +320,7 @@ export default function Home() {
             />
             <button
               type="submit"
-              disabled={loading || !address}
+              disabled={loading || !resolvedAddress}
               className="px-8 py-4 bg-blue-600 text-white rounded-xl disabled:opacity-50 hover:bg-blue-700 transition-colors shadow-sm"
             >
               {loading ? 'Loading...' : 'Analyze'}
@@ -311,7 +349,7 @@ export default function Home() {
               >
                 {allItems.map((item, index) => (
                   <SwiperSlide key={index}>
-                    <Card item={item} address={address} />
+                    <Card item={item} address={resolvedAddress} />
                   </SwiperSlide>
                 ))}
               </Swiper>
