@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: "Base Wrapped 2024",
   description: "Discover what you did onchain in 2024!",
   metadataBase: new URL(process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'),
+  icons: {
+    icon: '/favicon.ico',
+  },
   openGraph: {
     title: "Base Wrapped 2024",
     description: "Discover what you did onchain in 2024!",
@@ -43,10 +46,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-      </head>
       <body>
         <Providers>{children}</Providers>
       </body>

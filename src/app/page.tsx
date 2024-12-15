@@ -320,7 +320,7 @@ export default function Home() {
               type="text"
               value={inputAddress}
               onChange={(e) => setInputAddress(e.target.value as `0x${string}`)}
-              placeholder="Enter Ethereum address"
+              placeholder="Enter address or name"
               autoComplete="off"
               disabled={loading}
               className="flex-1 p-4 border rounded-xl text-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-50"
