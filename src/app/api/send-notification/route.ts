@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
 
   const sendResult = await sendFrameNotification({
     fid: requestBody.data.fid,
-    title: "Test notification",
-    body: "Sent at " + new Date().toISOString(),
+    title: "Your Base Wrapped is ready!",
+    body: "Tap to view your results",
   });
 
   if (sendResult.state === "error") {
