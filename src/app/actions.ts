@@ -13,11 +13,6 @@ export async function analyzeWrapped(address: string) {
   // Validate address
   if (!address) throw new Error('Address is required')
 
-  // Add zero address check
-  if (isAddressEqual(address as `0x${string}`, zeroAddress)) {
-    throw new Error('Cannot analyze zero address')
-  }
-
   if (!isAddress(address)) {
     const resolvedAddress = await resolveAddress({
       name: address,
@@ -26,6 +21,11 @@ export async function analyzeWrapped(address: string) {
       resolverAddress: BASENAME_RESOLVER_ADDRESS,
     });
     address = resolvedAddress as `0x${string}`;
+  }
+
+  // Add zero address check
+  if (isAddressEqual(address as `0x${string}`, zeroAddress)) {
+    throw new Error('Cannot analyze zero address')
   }
 
   try {
