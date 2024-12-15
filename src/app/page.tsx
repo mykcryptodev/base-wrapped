@@ -15,6 +15,7 @@ import { isAddress, zeroAddress } from 'viem';
 import Link from 'next/link';
 import { truncateAddress } from '~/lib/truncateAddress';
 import Share from '~/components/Share';
+import useDebounce from '~/hooks/useDebounce';
 
 interface TitleCard {
   showIdentity?: boolean;
@@ -128,25 +129,19 @@ interface LoadingState {
 
 export default function Home() {
   const [inputAddress, setInputAddress] = useState<`0x${string}`>();
+  const debouncedInputAddress = useDebounce(inputAddress, 500);
   const [resolvedAddress, setResolvedAddress] = useState<`0x${string}`>();
   useEffect(() => {
-    const debounceTimeout = setTimeout(async () => {
-      if (!inputAddress) return;
-
-      if (isAddress(inputAddress as string)) {
-        setResolvedAddress(inputAddress as `0x${string}`);
-      } else {
-        try {
-          const resolved = await getAddressFromName(inputAddress as string);
+    try {
+      getAddressFromName(inputAddress as string).then(
+        (resolved) => {
           setResolvedAddress(resolved as `0x${string}`);
-        } catch (err) {
-          console.error(err);
         }
-      }
-    }, 500); // 500ms debounce delay
-
-    return () => clearTimeout(debounceTimeout);
-  }, [inputAddress]);
+      ) 
+    } catch (err) {
+      console.error(err);
+    }
+  }, [debouncedInputAddress]);
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -336,6 +331,7 @@ export default function Home() {
               type="text"
               value={inputAddress}
               onChange={(e) => setInputAddress(e.target.value as `0x${string}`)}
+              onBlur={(e) => setInputAddress(e.target.value as `0x${string}`)}
               placeholder="Enter address or name"
               autoComplete="off"
               disabled={loading}
