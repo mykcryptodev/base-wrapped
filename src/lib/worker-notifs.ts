@@ -1,4 +1,4 @@
-import { getUserNotificationDetails } from "./kv.js";
+import { getUserNotificationDetails } from "./worker-kv.js";
 
 type SendNotificationResult =
   | { state: "success" }
@@ -53,4 +53,4 @@ export async function sendFrameNotification({
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
-}
+} 

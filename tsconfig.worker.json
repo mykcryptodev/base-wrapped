@@ -12,12 +12,23 @@
     "rootDir": ".",
     "resolveJsonModule": true,
     "allowJs": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"]
   },
   "ts-node": {
     "esm": true,
     "experimentalSpecifiers": true
   },
-  "include": ["worker.ts", "src/**/*.ts"],
-  "exclude": ["node_modules", ".next", "dist"]
+  "include": [
+    "worker.ts",
+    "src/lib/**/*.ts",
+    "src/utils/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "dist",
+    "src/app/**/*"
+  ]
 } 
