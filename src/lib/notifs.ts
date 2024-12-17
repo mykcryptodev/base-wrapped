@@ -1,4 +1,4 @@
-import { getUserNotificationDetails } from "./kv";
+import { getUserNotificationDetails } from "./kv.js";
 
 type SendNotificationResult =
   | { state: "success" }

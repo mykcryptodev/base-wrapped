@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "NodeNext",
     "outDir": "dist",
     "noEmit": false,
     "baseUrl": ".",
@@ -13,6 +13,10 @@
     "resolveJsonModule": true,
     "allowJs": true,
     "esModuleInterop": true
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifiers": true
   },
   "include": ["worker.ts", "src/**/*.ts"],
   "exclude": ["node_modules"]

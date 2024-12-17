@@ -15,8 +15,10 @@ COPY . .
 # Build the worker
 RUN yarn worker:build
 
-# Verify the build output exists
-RUN ls -la dist/
+# Verify the build output and its structure
+RUN ls -la dist/ && \
+    ls -la dist/src/lib/ && \
+    ls -la dist/src/utils/api/
 
 # Start the worker
 CMD ["yarn", "worker"] 
