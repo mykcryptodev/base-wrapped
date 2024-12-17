@@ -1,18 +1,32 @@
 import 'dotenv/config';
-import { Job, Queue, JobOptions } from 'bull';
+import { Job, JobOptions } from 'bull';
 import { getQueue } from './src/lib/queue';
 import { fetchTransactionsFromZapper } from './src/utils/api/zapper';
 import { getFromS3Cache, saveToS3Cache } from './src/utils/api/s3';
 import { getAnalysisFromOpenAI } from './src/utils/api/openai';
 import { getUserNotificationDetails } from "./src/lib/kv";
 import { sendFrameNotification } from "./src/lib/notifs";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import path from 'path';
+import fs from 'fs';
+
+// Get directory name in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Add startup logging immediately
 console.log('Worker script starting...', {
   nodeVersion: process.version,
   nodeEnv: process.env.NODE_ENV,
   cwd: process.cwd(),
-  dirname: __dirname
+  dirname: __dirname,
+  workingDirectory: {
+    cwd: process.cwd(),
+    dirname: __dirname,
+    absolutePath: path.resolve(__dirname),
+    files: process.cwd() ? fs.readdirSync(process.cwd()) : 'Not available'
+  }
 });
 
 // Verify required environment variables

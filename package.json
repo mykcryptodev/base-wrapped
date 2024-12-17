@@ -9,7 +9,7 @@
     "start": "next start",
     "worker:build": "tsc -P tsconfig.worker.json",
     "worker": "node --experimental-specifier-resolution=node dist/worker.js",
-    "worker:dev": "nodemon",
+    "worker:dev": "NODE_ENV=development nodemon",
     "lint": "next lint",
     "start:all": "nf start"
   },

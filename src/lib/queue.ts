@@ -36,8 +36,9 @@ export async function getQueue() {
         tls: {
           rejectUnauthorized: false // Required for some Redis providers
         },
-        maxRetriesPerRequest: 3,
-        enableReadyCheck: true, // Enable ready check
+        enableOfflineQueue: true,
+        maxRetriesPerRequest: null, // Remove retry limit
+        enableReadyCheck: false, // Disable ready check as per error message
         retryStrategy: function (times: number) {
           if (times > 10) {
             console.error('Redis connection failed after 10 retries');
@@ -47,6 +48,11 @@ export async function getQueue() {
           console.log(`Redis connection retry ${times} in ${delay}ms`);
           return delay;
         }
+      },
+      settings: {
+        lockDuration: 300000, // 5 minutes
+        stalledInterval: 30000, // 30 seconds
+        maxStalledCount: 3
       }
     });
 
