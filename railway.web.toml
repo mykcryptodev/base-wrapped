@@ -1,8 +1,13 @@
 [build]
 builder = "nixpacks"
+buildCommand = "yarn build"
 
 [deploy]
 name = "web"
 startCommand = "yarn start"
 healthcheckPath = "/api/worker-health"
-healthcheckTimeout = 100 
+healthcheckTimeout = 100
+
+[nixpacks]
+# Disable caching for now to avoid build issues
+features = []

@@ -1,4 +1,5 @@
-FROM node:20-alpine
+# Build stage
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -6,7 +7,7 @@ WORKDIR /app
 COPY package.json yarn.lock ./
 COPY tsconfig.json tsconfig.worker.json ./
 
-# Install dependencies
+# Install all dependencies for building
 RUN yarn install --frozen-lockfile
 
 # Copy source files
@@ -15,10 +16,20 @@ COPY . .
 # Build the worker
 RUN yarn worker:build
 
-# Verify the build output and its structure
-RUN ls -la dist/ && \
-    ls -la dist/src/lib/ && \
-    ls -la dist/src/utils/api/
+# Production stage
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json yarn.lock ./
+
+# Install only production dependencies
+RUN yarn install --frozen-lockfile --production
+
+# Copy built files from builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/tsconfig.json /app/tsconfig.worker.json ./
 
 # Start the worker
 CMD ["yarn", "worker"] 
