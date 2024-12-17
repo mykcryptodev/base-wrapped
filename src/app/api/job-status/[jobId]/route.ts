@@ -20,7 +20,16 @@ export async function GET(
     }
     
     const { jobId } = params as { jobId: string };
-    const jobQueue = getQueue();
+    const jobQueue = await getQueue();
+    
+    if (!jobQueue) {
+      console.error('Failed to initialize job queue');
+      return NextResponse.json(
+        { error: 'Failed to initialize job queue' },
+        { status: 500 }
+      );
+    }
+
     const job = await jobQueue.getJob(jobId);
     
     if (!job) {

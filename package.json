@@ -10,7 +10,8 @@
     "worker:build": "tsc -P tsconfig.worker.json",
     "worker": "node --experimental-specifier-resolution=node dist/worker.js",
     "worker:dev": "nodemon",
-    "lint": "next lint"
+    "lint": "next lint",
+    "start:all": "nf start"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.712.0",
@@ -40,6 +41,7 @@
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "15.0.3",
+    "foreman": "^3.0.1",
     "nodemon": "^3.1.9",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",

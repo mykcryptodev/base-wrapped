@@ -11,7 +11,19 @@ export async function GET(req: Request) {
       );
     }
 
-    const queue = getQueue();
+    const queue = await getQueue();
+    
+    if (!queue) {
+      return NextResponse.json(
+        { 
+          status: 'unhealthy',
+          error: 'Failed to initialize queue',
+          timestamp: new Date().toISOString()
+        },
+        { status: 500 }
+      );
+    }
+
     const health = {
       status: 'healthy',
       timestamp: new Date().toISOString(),

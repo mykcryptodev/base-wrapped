@@ -28,7 +28,15 @@ export async function POST(req: Request) {
     const normalizedAddress = address?.toLowerCase();
     console.log('Normalized address:', normalizedAddress);
 
-    const jobQueue = getQueue();
+    const jobQueue = await getQueue();
+    
+    if (!jobQueue) {
+      console.error('Failed to initialize job queue');
+      return NextResponse.json(
+        { error: 'Failed to initialize job queue' },
+        { status: 500 }
+      );
+    }
 
     // Check if a job is already in progress
     const existingJobs = await jobQueue.getJobs(['active', 'waiting']);
