@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { Job, Queue, JobOptions } from 'bull';
 import { getQueue } from './src/lib/queue';
 import { fetchTransactionsFromZapper } from './src/utils/api/zapper';
 import { getFromS3Cache, saveToS3Cache } from './src/utils/api/s3';
@@ -6,21 +7,112 @@ import { getAnalysisFromOpenAI } from './src/utils/api/openai';
 import { getUserNotificationDetails } from "./src/lib/kv";
 import { sendFrameNotification } from "./src/lib/notifs";
 
-console.log('Starting worker process...');
-console.log('Environment check:', {
-  redisUrl: process.env.KV_REST_API_URL ? 'set' : 'not set',
-  redisToken: process.env.KV_REST_API_TOKEN ? 'set' : 'not set'
-});
+// Define types for our job data and return value
+interface JobData {
+  address: string;
+  fid?: number;
+}
 
-const fetchWithTimeout = async (promise: Promise<any>, timeoutMs: number) => {
-  const timeout = new Promise((_, reject) => 
+// Define the Zapper transaction type based on their API response
+interface ZapperTransaction {
+  node: {
+    key: string;
+    timestamp: number;
+    transaction: {
+      toUser: {
+        displayName: {
+          value: string;
+        };
+      };
+      fromUser: {
+        displayName: {
+          value: string;
+        };
+      };
+      value: string;
+      hash?: string; // Make hash optional since it might not always be present
+    };
+    app: {
+      tags: string[];
+      app: {
+        imgUrl: string;
+        category: {
+          name: string;
+          description: string;
+        };
+      };
+    };
+    interpretation: {
+      processedDescription: string;
+    };
+    interpreter: {
+      category: string;
+    };
+  };
+}
+
+// Our normalized transaction type
+interface Transaction {
+  hash: string;
+  timestamp: number;
+  description: string;
+  category: string;
+  tags: string[];
+  fromUser?: string;
+  toUser?: string;
+  value?: string;
+  [key: string]: unknown;
+}
+
+interface JobProgress {
+  status: 'fetching' | 'analyzing';
+  step: number;
+  totalSteps: number;
+  chunkProgress?: {
+    currentChunk: number;
+    totalChunks: number;
+  };
+}
+
+interface JobResult {
+  status: 'complete';
+  analysis: {
+    popularTokens: unknown[];
+    popularActions: unknown[];
+    popularUsers: unknown[];
+    otherStories: Array<{
+      name: string;
+      stat: string;
+      description: string;
+      category: string;
+    }>;
+  };
+}
+
+const fetchWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  const timeout = new Promise<never>((_, reject) => 
     setTimeout(() => reject(new Error('Operation timeout')), timeoutMs)
   );
   return Promise.race([promise, timeout]);
 };
 
+// Convert Zapper transaction to our normalized format
+function normalizeTransaction(zapperTx: ZapperTransaction): Transaction {
+  return {
+    hash: zapperTx.node.transaction.hash || zapperTx.node.key, // Fallback to key if hash is not present
+    timestamp: zapperTx.node.timestamp,
+    description: zapperTx.node.interpretation.processedDescription || '',
+    category: zapperTx.node.interpreter.category || '',
+    tags: zapperTx.node.app?.tags || [],
+    fromUser: zapperTx.node.transaction.fromUser?.displayName?.value || '',
+    toUser: zapperTx.node.transaction.toUser?.displayName?.value || '',
+    value: zapperTx.node.transaction.value || '0',
+    raw: zapperTx // Keep the raw data for reference
+  };
+}
+
 async function startWorker() {
-  const jobQueue = getQueue();
+  const jobQueue = getQueue() as Queue<JobData>;
   const activeJobs = new Set<string>();
 
   // Clean up old jobs on startup
@@ -32,14 +124,27 @@ async function startWorker() {
   console.log('Cleanup complete');
 
   // Process jobs in the queue
-  jobQueue.process(async (job) => {    
+  jobQueue.process(async (job: Job<JobData>): Promise<JobResult> => {    
     const { address, fid } = job.data;
     const normalizedAddress = address?.toLowerCase();
     
+    if (!normalizedAddress) {
+      throw new Error('Invalid address provided');
+    }
+
     // Check if job is already being processed
     if (activeJobs.has(normalizedAddress)) {
       console.log(`Job already in progress for ${normalizedAddress}, skipping`);
-      return job.moveToCompleted();
+      // Create an empty result instead of using moveToCompleted
+      return {
+        status: 'complete',
+        analysis: {
+          popularTokens: [],
+          popularActions: [],
+          popularUsers: [],
+          otherStories: []
+        }
+      };
     }
     
     try {
@@ -51,21 +156,21 @@ async function startWorker() {
         status: 'fetching',
         step: 1,
         totalSteps: 3
-      });
+      } as JobProgress);
 
       // First check if we already have raw transactions
       const rawCacheKey = `wrapped-2024-raw/${normalizedAddress}.json`;
-      let transactions = await getFromS3Cache(rawCacheKey);
+      let transactions = await getFromS3Cache(rawCacheKey) as Transaction[] | null;
       
       // If no cached transactions, fetch from Zapper
       if (!transactions) {
         console.log('Fetching transactions from Zapper...');
-        transactions = await fetchWithTimeout(
+        const zapperTransactions = await fetchWithTimeout(
           fetchTransactionsFromZapper(normalizedAddress),
           300000 // 5 minute timeout
-        );
+        ) as ZapperTransaction[];
         
-        if (!transactions || transactions.length === 0) {
+        if (!zapperTransactions || zapperTransactions.length === 0) {
           console.log('No transactions found for address:', normalizedAddress);
           return {
             status: 'complete',
@@ -83,7 +188,10 @@ async function startWorker() {
           };
         }
         
-        // Store the raw transactions in S3
+        // Normalize the transactions
+        transactions = zapperTransactions.map(normalizeTransaction);
+        
+        // Store the normalized transactions in S3
         await saveToS3Cache(rawCacheKey, transactions);
         console.log('Saved transactions to S3');
       }
@@ -103,7 +211,7 @@ async function startWorker() {
             currentChunk: i,
             totalChunks: chunks.length
           }
-        });
+        } as JobProgress);
 
         // Process this chunk
         await processChunk(chunks[i]);
@@ -143,26 +251,35 @@ async function startWorker() {
       const attempts = job.attemptsMade;
       if (attempts < 5) { // Max 5 retries
         const delay = Math.min(1000 * Math.pow(2, attempts), 30000); // Exponential backoff
-        await job.update({ delay: Date.now() + delay }); // Manually delay the job
+        // Use the proper Bull method to delay the job
+        await jobQueue.add(job.data, { 
+          delay,
+          jobId: job.id,
+          attempts: attempts + 1
+        } as JobOptions);
         console.log(`Retrying job ${job.id} attempt ${attempts + 1} in ${delay}ms`);
-      } else {
-        throw error; // Only throw after max retries
       }
+      throw error; // Throw to mark the current job as failed
     } finally {
       activeJobs.delete(normalizedAddress);
     }
   });
 
-  jobQueue.on('failed', async (job, error) => {
+  // Add event handlers with proper typing
+  jobQueue.on('failed', (job: Job<JobData>, error: Error) => {
     console.error(`Job ${job.id} failed:`, error);
     const normalizedAddress = job.data.address?.toLowerCase();
-    activeJobs.delete(normalizedAddress);
+    if (normalizedAddress) {
+      activeJobs.delete(normalizedAddress);
+    }
   });
 
-  jobQueue.on('stalled', async (job) => {
+  jobQueue.on('stalled', (job: Job<JobData>) => {
     console.error(`Job ${job.id} stalled`);
     const normalizedAddress = job.data.address?.toLowerCase();
-    activeJobs.delete(normalizedAddress);
+    if (normalizedAddress) {
+      activeJobs.delete(normalizedAddress);
+    }
   });
 
   // Keep the process running
@@ -176,8 +293,8 @@ async function startWorker() {
 }
 
 // Helper function to chunk transactions
-function chunkTransactions(transactions: any[], size = 200) {
-  const chunks = [];
+function chunkTransactions(transactions: Transaction[], size = 200): Transaction[][] {
+  const chunks: Transaction[][] = [];
   for (let i = 0; i < transactions.length; i += size) {
     chunks.push(transactions.slice(i, i + size));
   }
@@ -185,9 +302,9 @@ function chunkTransactions(transactions: any[], size = 200) {
 }
 
 // Helper function to process a chunk
-async function processChunk(chunk: any[]) {
+async function processChunk(chunk: Transaction[]): Promise<void> {
   // Add your chunk processing logic here
-  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing time
+  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate processing time
 }
 
 // Start the worker
