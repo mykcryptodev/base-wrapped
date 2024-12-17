@@ -1,0 +1,15 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "yarn start"
+healthcheckPath = "/"
+healthcheckTimeout = 100
+restartPolicyType = "on-failure"
+
+[deploy.worker]
+dockerfile = "Dockerfile.worker"
+startCommand = "yarn worker"
+healthcheckPath = "/api/worker-health"
+healthcheckTimeout = 100
+restartPolicyType = "on-failure" 
