@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import { Job, JobOptions } from 'bull';
-import { getQueue } from './src/lib/queue';
-import { fetchTransactionsFromZapper } from './src/utils/api/zapper';
-import { getFromS3Cache, saveToS3Cache } from './src/utils/api/s3';
-import { getAnalysisFromOpenAI } from './src/utils/api/openai';
-import { getUserNotificationDetails } from "./src/lib/kv";
-import { sendFrameNotification } from "./src/lib/notifs";
+import { getQueue } from './src/lib/queue.js';
+import { fetchTransactionsFromZapper } from './src/utils/api/zapper.js';
+import { getFromS3Cache, saveToS3Cache } from './src/utils/api/s3.js';
+import { getAnalysisFromOpenAI } from './src/utils/api/openai.js';
+import { getUserNotificationDetails } from "./src/lib/kv.js";
+import { sendFrameNotification } from "./src/lib/notifs.js";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import path from 'path';

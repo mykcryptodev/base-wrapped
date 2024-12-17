@@ -2,13 +2,17 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "ESNext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "outDir": "dist",
     "noEmit": false,
     "baseUrl": ".",
     "paths": {
       "~/*": ["src/*"]
-    }
+    },
+    "rootDir": ".",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "esModuleInterop": true
   },
   "include": ["worker.ts", "src/**/*.ts"],
   "exclude": ["node_modules"]

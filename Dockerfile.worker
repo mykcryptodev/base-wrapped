@@ -4,6 +4,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json yarn.lock ./
+COPY tsconfig.json tsconfig.worker.json ./
 
 # Install dependencies
 RUN yarn install --frozen-lockfile
@@ -13,6 +14,9 @@ COPY . .
 
 # Build the worker
 RUN yarn worker:build
+
+# Verify the build output exists
+RUN ls -la dist/
 
 # Start the worker
 CMD ["yarn", "worker"] 
