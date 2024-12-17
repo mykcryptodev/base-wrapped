@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build && tsc -P tsconfig.worker.json",
+    "build": "next build",
+    "build:worker": "tsc -P tsconfig.worker.json",
     "start": "next start",
     "worker:build": "tsc -P tsconfig.worker.json",
     "worker": "node --experimental-specifier-resolution=node --es-module-specifier-resolution=node dist/worker.js",
