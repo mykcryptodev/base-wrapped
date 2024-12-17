@@ -115,6 +115,15 @@ async function startWorker() {
   const jobQueue = getQueue() as Queue<JobData>;
   const activeJobs = new Set<string>();
 
+  // Add startup logging
+  console.log('Worker process starting...', {
+    nodeEnv: process.env.NODE_ENV,
+    redisUrl: process.env.KV_REST_API_URL ? 'Set' : 'Not set',
+    redisToken: process.env.KV_REST_API_TOKEN ? 'Set' : 'Not set',
+    openaiKey: process.env.OPENAI_API_KEY ? 'Set' : 'Not set',
+    pid: process.pid
+  });
+
   // Clean up old jobs on startup
   const TWENTY_MINUTES = 20 * 60 * 1000;
   console.log('Cleaning up old jobs (older than 20 minutes)...');
@@ -122,6 +131,15 @@ async function startWorker() {
   await jobQueue.clean(TWENTY_MINUTES, 'active');
   await jobQueue.clean(TWENTY_MINUTES, 'failed');
   console.log('Cleanup complete');
+
+  // Add queue event listeners for monitoring
+  jobQueue.on('ready', () => {
+    console.log('Queue is ready to process jobs');
+  });
+
+  jobQueue.on('error', (error) => {
+    console.error('Queue error:', error);
+  });
 
   // Process jobs in the queue
   jobQueue.process(async (job: Job<JobData>): Promise<JobResult> => {    
@@ -282,11 +300,41 @@ async function startWorker() {
     }
   });
 
-  // Keep the process running
+  // Add more detailed error handling
+  process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    // Optionally notify your error tracking service here
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Optionally notify your error tracking service here
+  });
+
+  // Add graceful shutdown
   process.on('SIGTERM', async () => {
-    console.log('Shutting down worker...');
-    await jobQueue.close();
-    process.exit(0);
+    console.log('Received SIGTERM signal. Starting graceful shutdown...');
+    try {
+      // Close the queue
+      await jobQueue.close();
+      console.log('Queue closed successfully');
+      process.exit(0);
+    } catch (error) {
+      console.error('Error during shutdown:', error);
+      process.exit(1);
+    }
+  });
+
+  process.on('SIGINT', async () => {
+    console.log('Received SIGINT signal. Starting graceful shutdown...');
+    try {
+      await jobQueue.close();
+      console.log('Queue closed successfully');
+      process.exit(0);
+    } catch (error) {
+      console.error('Error during shutdown:', error);
+      process.exit(1);
+    }
   });
 
   console.log('Worker ready to process jobs');
