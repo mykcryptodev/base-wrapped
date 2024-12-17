@@ -2,12 +2,13 @@
   "name": "frames-v2-demo",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build && tsc -P tsconfig.worker.json",
     "start": "next start",
     "worker:build": "tsc -P tsconfig.worker.json",
-    "worker": "node dist/worker.js",
+    "worker": "node --experimental-specifier-resolution=node dist/worker.js",
     "worker:dev": "nodemon",
     "lint": "next lint"
   },
