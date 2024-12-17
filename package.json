@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && npm run build:worker",
     "start": "next start",
-    "worker": "ts-node -P tsconfig.worker.json worker.ts",
+    "build:worker": "tsc -p tsconfig.worker.json",
+    "worker:prod": "node dist/worker/worker.js",
     "worker:dev": "nodemon",
+    "web:prod": "next start",
     "lint": "next lint"
   },
   "dependencies": {
