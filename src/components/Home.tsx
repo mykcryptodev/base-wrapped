@@ -135,7 +135,7 @@ function AnalysisCard({ item }: { item: AnalysisItem }) {
       </div>
       {item.category && (
         <div className="mt-auto mt-4 inline-block px-4 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-medium w-fit">
-          {item.category.toLowerCase()}
+          {item.category?.toLowerCase()}
         </div>
       )}
     </div>

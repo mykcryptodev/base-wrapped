@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const normalizedAddress = address.toLowerCase();
+    const normalizedAddress = address?.toLowerCase();
     console.log('Normalized address:', normalizedAddress);
 
     const jobQueue = getQueue();
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     console.log('Existing jobs:', existingJobs.length);
     
     const existingJob = existingJobs.find(job => 
-      job.data.address.toLowerCase() === normalizedAddress
+      job.data.address?.toLowerCase() === normalizedAddress
     );
 
     if (existingJob) {

@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const normalizedAddress = address.toLowerCase();
+    const normalizedAddress = address?.toLowerCase();
 
     // Add zero address check
     if (isAddressEqual(normalizedAddress as `0x${string}`, zeroAddress)) {

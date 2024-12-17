@@ -37,7 +37,7 @@ export async function analyzeWrapped(address: string, pollAttempts: number = 0) 
 
     // If we get a job ID back, store it in localStorage
     if (data.jobId && typeof window !== 'undefined') {
-      localStorage.setItem(`analysis_job_${address.toLowerCase()}`, data.jobId);
+      localStorage.setItem(`analysis_job_${address?.toLowerCase() ?? ''}`, data.jobId);
     }
 
     return data;

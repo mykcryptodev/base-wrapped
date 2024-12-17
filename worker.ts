@@ -34,7 +34,7 @@ async function startWorker() {
   // Process jobs in the queue
   jobQueue.process(async (job) => {    
     const { address, fid } = job.data;
-    const normalizedAddress = address.toLowerCase();
+    const normalizedAddress = address?.toLowerCase();
     
     // Check if job is already being processed
     if (activeJobs.has(normalizedAddress)) {
@@ -155,13 +155,13 @@ async function startWorker() {
 
   jobQueue.on('failed', async (job, error) => {
     console.error(`Job ${job.id} failed:`, error);
-    const normalizedAddress = job.data.address.toLowerCase();
+    const normalizedAddress = job.data.address?.toLowerCase();
     activeJobs.delete(normalizedAddress);
   });
 
   jobQueue.on('stalled', async (job) => {
     console.error(`Job ${job.id} stalled`);
-    const normalizedAddress = job.data.address.toLowerCase();
+    const normalizedAddress = job.data.address?.toLowerCase();
     activeJobs.delete(normalizedAddress);
   });
 

@@ -90,7 +90,7 @@ export async function getAnalysisFromOpenAI(transactions: unknown, address: stri
   try {
     // Chunk the transactions
     const chunks = chunkTransactions(transactions as unknown[]);
-    const normalizedAddress = address.toLowerCase();
+    const normalizedAddress = address?.toLowerCase();
 
     // Initialize progress
     analysisProgress.set(normalizedAddress, {
@@ -189,6 +189,6 @@ export async function getAnalysisFromOpenAI(transactions: unknown, address: stri
       }
     }
     // Clean up progress tracking
-    analysisProgress.delete(address.toLowerCase());
+    analysisProgress.delete(address?.toLowerCase());
   }
 }
