@@ -7,6 +7,27 @@ import { getAnalysisFromOpenAI } from './src/utils/api/openai';
 import { getUserNotificationDetails } from "./src/lib/kv";
 import { sendFrameNotification } from "./src/lib/notifs";
 
+// Add startup logging immediately
+console.log('Worker script starting...', {
+  nodeVersion: process.version,
+  nodeEnv: process.env.NODE_ENV,
+  cwd: process.cwd(),
+  dirname: __dirname
+});
+
+// Verify required environment variables
+const requiredEnvVars = [
+  'KV_REST_API_URL',
+  'KV_REST_API_TOKEN',
+  'OPENAI_API_KEY'
+];
+
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+if (missingEnvVars.length > 0) {
+  console.error('Missing required environment variables:', missingEnvVars);
+  process.exit(1);
+}
+
 // Define types for our job data and return value
 interface JobData {
   address: string;
@@ -121,7 +142,66 @@ async function startWorker() {
     redisUrl: process.env.KV_REST_API_URL ? 'Set' : 'Not set',
     redisToken: process.env.KV_REST_API_TOKEN ? 'Set' : 'Not set',
     openaiKey: process.env.OPENAI_API_KEY ? 'Set' : 'Not set',
-    pid: process.pid
+    pid: process.pid,
+    startTime: new Date().toISOString()
+  });
+
+  // Set up automatic restart on fatal errors
+  let isShuttingDown = false;
+  
+  async function restartWorker() {
+    if (isShuttingDown) return;
+    
+    console.log('Attempting to restart worker...');
+    try {
+      await jobQueue.close();
+    } catch (error) {
+      console.error('Error closing queue during restart:', error);
+    }
+    
+    // Wait a bit before restarting
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    // Start a new worker process
+    process.exit(1); // Railway will automatically restart the process
+  }
+
+  // Add handlers for fatal errors
+  process.on('uncaughtException', async (error) => {
+    console.error('Uncaught Exception:', error);
+    await restartWorker();
+  });
+
+  process.on('unhandledRejection', async (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    await restartWorker();
+  });
+
+  // Modify shutdown handlers
+  process.on('SIGTERM', async () => {
+    console.log('Received SIGTERM signal. Starting graceful shutdown...');
+    isShuttingDown = true;
+    try {
+      await jobQueue.close();
+      console.log('Queue closed successfully');
+      process.exit(0);
+    } catch (error) {
+      console.error('Error during shutdown:', error);
+      process.exit(1);
+    }
+  });
+
+  process.on('SIGINT', async () => {
+    console.log('Received SIGINT signal. Starting graceful shutdown...');
+    isShuttingDown = true;
+    try {
+      await jobQueue.close();
+      console.log('Queue closed successfully');
+      process.exit(0);
+    } catch (error) {
+      console.error('Error during shutdown:', error);
+      process.exit(1);
+    }
   });
 
   // Clean up old jobs on startup
@@ -143,6 +223,11 @@ async function startWorker() {
 
   // Process jobs in the queue
   jobQueue.process(async (job: Job<JobData>): Promise<JobResult> => {    
+    // Set job options for long-running jobs
+    job.opts.timeout = 1200000; // 20 minutes timeout
+    job.opts.removeOnComplete = true; // Remove completed jobs
+    job.opts.removeOnFail = false; // Keep failed jobs for debugging
+    
     const { address, fid } = job.data;
     const normalizedAddress = address?.toLowerCase();
     
@@ -297,43 +382,6 @@ async function startWorker() {
     const normalizedAddress = job.data.address?.toLowerCase();
     if (normalizedAddress) {
       activeJobs.delete(normalizedAddress);
-    }
-  });
-
-  // Add more detailed error handling
-  process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error);
-    // Optionally notify your error tracking service here
-  });
-
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    // Optionally notify your error tracking service here
-  });
-
-  // Add graceful shutdown
-  process.on('SIGTERM', async () => {
-    console.log('Received SIGTERM signal. Starting graceful shutdown...');
-    try {
-      // Close the queue
-      await jobQueue.close();
-      console.log('Queue closed successfully');
-      process.exit(0);
-    } catch (error) {
-      console.error('Error during shutdown:', error);
-      process.exit(1);
-    }
-  });
-
-  process.on('SIGINT', async () => {
-    console.log('Received SIGINT signal. Starting graceful shutdown...');
-    try {
-      await jobQueue.close();
-      console.log('Queue closed successfully');
-      process.exit(0);
-    } catch (error) {
-      console.error('Error during shutdown:', error);
-      process.exit(1);
     }
   });
 
