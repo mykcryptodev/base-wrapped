@@ -183,7 +183,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
-  console.log({analysis});
   const [error, setError] = useState('');
   const [pollAttempts, setPollAttempts] = useState(0);
 
