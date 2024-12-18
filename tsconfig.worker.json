@@ -1,34 +1,14 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "outDir": "dist",
-    "noEmit": false,
-    "baseUrl": ".",
-    "paths": {
-      "~/*": ["src/*"]
-    },
-    "rootDir": ".",
-    "resolveJsonModule": true,
-    "allowJs": true,
+    "target": "es2017",
+    "module": "commonjs",
+    "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",
+    "rootDir": "./src"
   },
-  "ts-node": {
-    "esm": true,
-    "experimentalSpecifiers": true
-  },
-  "include": [
-    "worker.ts",
-    "src/lib/**/*.ts",
-    "src/utils/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    ".next",
-    "dist",
-    "src/app/**/*"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
 } 
