@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getQueue } from '~/lib/queue';
 import { isValidApiKey } from '~/utils/api/validate';
+import analysisQueue from '~/lib/queues/analysis-queue';
 
 export async function GET(req: Request) {
   try {
@@ -11,33 +11,17 @@ export async function GET(req: Request) {
       );
     }
 
-    const queue = await getQueue();
-    
-    if (!queue) {
-      return NextResponse.json(
-        { 
-          status: 'unhealthy',
-          error: 'Failed to initialize queue',
-          timestamp: new Date().toISOString()
-        },
-        { status: 500 }
-      );
-    }
-
     const health = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       metrics: {
-        waiting: await queue.getWaitingCount(),
-        active: await queue.getActiveCount(),
-        completed: await queue.getCompletedCount(),
-        failed: await queue.getFailedCount()
+        pending: (await analysisQueue.length)
       }
     };
 
     return NextResponse.json(health);
   } catch (error) {
-    console.error('Worker health check failed:', error);
+    console.error('Health check failed:', error);
     return NextResponse.json(
       { 
         status: 'unhealthy',
