@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "concurrently \"next dev\" \"quirrel dev\"",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "deploy": "railway up"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.712.0",
