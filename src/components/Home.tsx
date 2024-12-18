@@ -187,7 +187,7 @@ export default function Home() {
   const [pollAttempts, setPollAttempts] = useState(0);
 
   useEffect(() => {
-    const addressParam = searchParams.get('a');
+    const addressParam = searchParams?.get('a');
     if (addressParam && !inputAddress) {
       setInputAddress(addressParam as `0x${string}`);
     }
@@ -395,7 +395,7 @@ export default function Home() {
 
   // Add this effect to handle automatic analysis on page load
   useEffect(() => {
-    const addressParam = searchParams.get('a');
+    const addressParam = searchParams?.get('a');
     if (addressParam && !loading && !analysis) {
       getAddressFromName(addressParam).then((resolved) => {
         if (resolved) {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { setUserNotificationDetails } from "~/lib/kv";
 import { sendFrameNotification } from "~/lib/notifs";
 
+// @ts-expect-error Type instantiation is excessively deep and possibly infinite
 const requestSchema = z.object({
   fid: z.number(),
   notificationDetails: notificationDetailsSchema,
