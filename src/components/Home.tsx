@@ -165,7 +165,7 @@ export default function Home() {
   const { address } = useAccount();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [inputAddress, setInputAddress] = useState<`0x${string}`>();
+  const [inputAddress, setInputAddress] = useState<`0x${string}`>("" as `0x${string}`);
   const debouncedInputAddress = useDebounce(inputAddress, 500);
   const [resolvedAddress, setResolvedAddress] = useState<`0x${string}`>();
   useEffect(() => {
@@ -334,13 +334,13 @@ export default function Home() {
       showIdentity: true,
       type: "title" as const,
       title: `Base 2024 Wrapped`,
-      description: analysis.otherStories.some(story => story.name === "No Activity Found")
+      description: analysis.otherStories?.some(story => story.name === "No Activity Found")
         ? "Let's check out your activity on Base..."
         : "Let's take a journey through your year on Base. We've analyzed your transactions to uncover some interesting insights about your onchain activity. Swipe to begin! →"
     },
 
     // Only show sections if there are items
-    ...(analysis.popularTokens.length > 0 ? [
+    ...(analysis.popularTokens?.length > 0 ? [
       {
         type: 'title' as const,
         icon: '🪙',
@@ -350,7 +350,7 @@ export default function Home() {
       ...analysis.popularTokens.map(item => ({ ...item, type: 'analysis' as const }))
     ] : []),
     
-    ...(analysis.popularActions.length > 0 ? [
+    ...(analysis.popularActions?.length > 0 ? [
       {
         type: 'title' as const,
         icon: '⚡',
@@ -360,7 +360,7 @@ export default function Home() {
       ...analysis.popularActions.map(item => ({ ...item, type: 'analysis' as const }))
     ] : []),
     
-    ...(analysis.popularUsers.length > 0 ? [
+    ...(analysis.popularUsers?.length > 0 ? [
       {
         type: 'title' as const,
         icon: '🤝',
@@ -374,20 +374,20 @@ export default function Home() {
     {
       type: 'title' as const,
       icon: '✨',
-      title: analysis.otherStories.some(story => story.name === "No Activity Found") ? 'No Activity Yet' : 'Highlights',
-      description: analysis.otherStories.some(story => story.name === "No Activity Found")
+      title: analysis.otherStories?.some(story => story.name === "No Activity Found") ? 'No Activity Yet' : 'Highlights',
+      description: analysis.otherStories?.some(story => story.name === "No Activity Found")
         ? "We couldn't find any transactions yet"
         : "Special moments from your Base journey"
     },
-    ...analysis.otherStories.map(item => ({ ...item, type: 'analysis' as const })),
+    ...(analysis?.otherStories?.length > 0 ? analysis?.otherStories?.map(item => ({ ...item, type: 'analysis' as const })) : []),
 
     // Final Card - customize based on activity
     {
       showIdentity: true,
       type: 'title' as const,
       icon: '🎊',
-      title: analysis.otherStories.some(story => story.name === "No Activity Found") ? 'Start Your Journey!' : 'Happy New Year!',
-      description: analysis.otherStories.some(story => story.name === "No Activity Found")
+      title: analysis.otherStories?.some(story => story.name === "No Activity Found") ? 'Start Your Journey!' : 'Happy New Year!',
+      description: analysis.otherStories?.some(story => story.name === "No Activity Found")
         ? "Ready to start your journey on Base? Visit base.org to learn more about getting started with Base!"
         : "Thank you for being part of the Base ecosystem in 2024. Here's to an even more exciting 2025 filled with new achievements and milestones. Keep building! 🚀"
     },
