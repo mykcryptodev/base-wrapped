@@ -1,16 +1,8 @@
 import { NextResponse } from 'next/server';
-import { isValidApiKey } from '~/utils/api/validate';
 import analysisQueue from '~/lib/queues/analysis-queue';
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    if (!isValidApiKey(req)) {
-      return NextResponse.json(
-        { error: 'Unauthorized - Invalid or missing API key' },
-        { status: 401 }
-      );
-    }
-
     const health = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
