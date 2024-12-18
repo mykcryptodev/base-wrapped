@@ -1,12 +1,12 @@
-import { NextRequest } from "next/server";
 import { analysisQueue } from "~/lib/queues/analysis-queue";
 import { getFromS3Cache } from '~/utils/api/s3';
 
 export async function GET(
-  request: NextRequest,
-  context: { params: { jobId: string } }
-) {
-  const jobId = context.params.jobId;
+  request: Request,
+  props: unknown,
+): Promise<Response> {
+  // @ts-expect-error any
+  const { jobId } = props.params as { jobId: string };
   console.log("Received job status request for job:", jobId);
 
   try {
