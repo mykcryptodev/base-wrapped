@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"next dev\" \"quirrel dev\"",
-    "build": "next build && quirrel ci",
+    "build": "next build",
     "start": "next start",
     "deploy": "railway up"
   },
