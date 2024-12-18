@@ -4,9 +4,9 @@ import { getFromS3Cache } from '~/utils/api/s3';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { jobId: string } }
+  context: { params: { jobId: string } }
 ) {
-  const jobId = params.jobId;
+  const jobId = context.params.jobId;
   console.log("Received job status request for job:", jobId);
 
   try {
