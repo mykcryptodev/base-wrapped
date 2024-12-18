@@ -1,62 +1,37 @@
-import { NextResponse } from 'next/server';
-import { getQueue } from '~/lib/queue';
-import { isValidApiKey } from '~/utils/api/validate';
+import { NextRequest } from "next/server";
+import { analysisQueue } from "~/lib/queues/analysis-queue";
+import { getFromS3Cache } from '~/utils/api/s3';
 
 export async function GET(
-  req: Request,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  { params }: { params: any }
+  request: NextRequest,
+  { params }: { params: { jobId: string } }
 ) {
+  const jobId = params.jobId;
+  console.log("Received job status request for job:", jobId);
+
   try {
-    const typedParams = params as { jobId: string };
-    console.log('Received job status request for job:', typedParams.jobId);
-
-    if (!isValidApiKey(req)) {
-      console.log('API key validation failed');
-      return NextResponse.json(
-        { error: 'Unauthorized - Invalid or missing API key' },
-        { status: 401 }
-      );
-    }
+    const address = jobId.toLowerCase();
+    const analysisCacheKey = `wrapped-2024-analysis/${address}.json`;
     
-    const { jobId } = params as { jobId: string };
-    const jobQueue = await getQueue();
+    // Check if analysis exists in cache
+    const analysisResult = await getFromS3Cache(analysisCacheKey);
     
-    if (!jobQueue) {
-      console.error('Failed to initialize job queue');
-      return NextResponse.json(
-        { error: 'Failed to initialize job queue' },
-        { status: 500 }
-      );
+    if (analysisResult) {
+      return Response.json(analysisResult);
     }
 
-    const job = await jobQueue.getJob(jobId);
+    // Check if job is still pending
+    const job = await analysisQueue.getById(address);
     
-    if (!job) {
-      console.log('Job not found:', jobId);
-      return NextResponse.json(
-        { error: 'Job not found' },
-        { status: 404 }
-      );
+    if (job) {
+      return Response.json({ status: 'processing' });
     }
-    
-    const state = await job.getState();
-    const progress = await job.progress();
-    
-    console.log('Job status:', { id: job.id, state, progress });
-    
-    return NextResponse.json({
-      id: job.id,
-      state,
-      progress,
-      data: job.data,
-      result: job.returnvalue,
-      failedReason: job.failedReason,
-    });
+
+    return Response.json({ status: 'not_found' }, { status: 404 });
   } catch (error) {
-    console.error('Error getting job status:', error);
-    return NextResponse.json(
-      { error: 'Failed to get job status', details: error instanceof Error ? error.message : String(error) },
+    console.error('Failed to get job status:', error);
+    return Response.json(
+      { error: 'Failed to get analysis status' },
       { status: 500 }
     );
   }

@@ -2,6 +2,7 @@
 
 import { isAddress, zeroAddress, isAddressEqual } from "viem";
 import { getAddressFromName } from "~/lib/getAddressFromName";
+import { headers } from 'next/headers';
 
 export async function analyzeWrapped(address: string, pollAttempts: number = 0) {
   // Validate address
@@ -49,21 +50,31 @@ export async function analyzeWrapped(address: string, pollAttempts: number = 0) 
 
 export async function getJobStatus(jobId: string) {
   try {
-    const statusUrl = new URL(`/api/job-status/${jobId}`, process.env.APP_URL!).toString();
-    console.log('Fetching job status from:', statusUrl);
+    // Get the host from headers
+    const headersList = await headers();
+    const host = headersList.get('host');
+    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+    const baseUrl = `${protocol}://${host}`;
     
-    const response = await fetch(statusUrl, {
+    console.log('Fetching job status from:', `${baseUrl}/api/job-status/${jobId}`);
+
+    const response = await fetch(`${baseUrl}/api/job-status/${jobId}`, {
+      method: 'GET',
       headers: {
-        'x-api-key': process.env.API_ROUTE_SECRET!
-      }
+        'Content-Type': 'application/json',
+      },
+      // Add next config to handle server-side fetch
+      next: { revalidate: 0 }
     });
     
     if (!response.ok) {
-      throw new Error('Failed to get job status');
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to get job status');
     }
+
     return await response.json();
   } catch (error) {
     console.error('Error getting job status:', error);
-    throw error instanceof Error ? error : new Error('Failed to get job status');
+    throw error;
   }
 } 

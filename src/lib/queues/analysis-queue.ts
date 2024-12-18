@@ -60,6 +60,41 @@ function normalizeTransaction(zapperTx: ZapperTransaction): Transaction {
   };
 }
 
+// Define the job payload type
+export interface AnalysisJobPayload {
+  address: string;
+  fid?: string;
+}
+
+// Create and export the queue instance
+// @ts-expect-error any
+export const analysisQueue = new Queue<AnalysisJobPayload>(
+  "api/queues/analysis",
+  async (job) => {
+    console.log("Processing analysis job:", job);
+    // Your job processing logic here
+  },
+);
+
+// Helper function to get queue status
+export async function getJobQueue() {
+  console.log("Initializing queue with Redis URL:", process.env.REDIS_URL ? "URL is set" : "URL is missing");
+  console.log("Redis token:", process.env.REDIS_TOKEN ? "Token is set" : "Token is missing");
+  
+  if (!process.env.REDIS_URL) throw new Error("REDIS_URL is required");
+  if (!process.env.REDIS_TOKEN) throw new Error("REDIS_TOKEN is required");
+
+  console.log("Creating job queue...");
+  console.log("Job queue initialized and ready");
+  
+  return analysisQueue;
+}
+
+// Add helper methods for job management
+export async function fetchJobs() {
+  return analysisQueue.fetchJobs();
+}
+
 // Create the queue
 export default Queue(
   "api/queues/analysis",
