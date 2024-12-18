@@ -7,8 +7,18 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "jsx": "react-jsx",
+    "paths": {
+      "~/*": ["./*"]
+    },
+    "baseUrl": "."
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "src/components/**/*",
+    "src/app/**/*",
+    "src/pages/**/*"
+  ]
 } 

@@ -6,10 +6,10 @@ WORKDIR /app
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 
-COPY . .
-
-# Run type checking separately (optional)
-RUN yarn tsc --noEmit -p tsconfig.worker.json
+# Only copy the files needed for the worker
+COPY tsconfig.worker.json ./
+COPY src/lib ./src/lib
+COPY worker.ts ./
 
 # Build the worker
 RUN yarn worker:build
