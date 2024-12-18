@@ -97,10 +97,7 @@ export async function POST(request: Request) {
     
     if (cachedAnalysis) {
       console.log('Analysis cache hit for address:', address);
-      return NextResponse.json({ 
-        status: 'complete',
-        analysis: cachedAnalysis 
-      });
+      return NextResponse.json(cachedAnalysis);
     }
 
     // Start or get status of job

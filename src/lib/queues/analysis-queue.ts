@@ -120,18 +120,15 @@ export default Queue(
         
         if (!zapperTransactions || zapperTransactions.length === 0) {
           await saveToS3Cache(analysisCacheKey, {
-            status: 'complete',
-            analysis: {
-              popularTokens: [],
-              popularActions: [],
-              popularUsers: [],
-              otherStories: [{
-                name: "No Activity Found",
-                stat: "0 transactions",
-                description: "We couldn't find any transactions for this address on Base in 2024.",
-                category: "info"
-              }]
-            }
+            popularTokens: [],
+            popularActions: [],
+            popularUsers: [],
+            otherStories: [{
+              name: "No Activity Found",
+              stat: "0 transactions",
+              description: "We couldn't find any transactions for this address on Base in 2024.",
+              category: "info"
+            }]
           });
           return;
         }
@@ -148,7 +145,7 @@ export default Queue(
       }
 
       // Store the analysis in S3
-      await saveToS3Cache(analysisCacheKey, { status: 'complete', analysis });
+      await saveToS3Cache(analysisCacheKey, analysis);
 
       // Send notification if user has enabled them
       if (fid) {

@@ -183,6 +183,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [loadingState, setLoadingState] = useState<LoadingState | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  console.log({analysis});
   const [error, setError] = useState('');
   const [pollAttempts, setPollAttempts] = useState(0);
 
@@ -206,6 +207,7 @@ export default function Home() {
       const data = await analyzeWrapped(address, currentAttempts);
       
       if (data.status === 'complete') {
+        console.log({ dataAnalysis: data.analysis });
         setAnalysis(data.analysis);
         setLoadingState(null);
         setLoading(false);
@@ -220,6 +222,7 @@ export default function Home() {
       if (data.jobId) {
         const jobStatus = await getJobStatus(data.jobId);
         if (jobStatus.status === 'complete') {
+          console.log({ jobStatusAnalysis: jobStatus.result.analysis });
           setAnalysis(jobStatus.result.analysis);
           setLoadingState(null);
           setLoading(false);
