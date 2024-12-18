@@ -56,9 +56,9 @@ export async function getJobStatus(jobId: string) {
     const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
     const baseUrl = `${protocol}://${host}`;
     
-    console.log('Fetching job status from:', `${baseUrl}/api/job-status/${jobId}`);
+    console.log('Fetching job status from:', `${baseUrl}/api/job-status?jobId=${jobId}`);
 
-    const response = await fetch(`${baseUrl}/api/job-status/${jobId}`, {
+    const response = await fetch(`${baseUrl}/api/job-status?jobId=${jobId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

@@ -1,12 +1,14 @@
+import { NextRequest } from 'next/server';
 import { analysisQueue } from "~/lib/queues/analysis-queue";
 import { getFromS3Cache } from '~/utils/api/s3';
 
-export async function GET(
-  request: Request,
-  props: unknown,
-): Promise<Response> {
-  // @ts-expect-error any
-  const { jobId } = props.params as { jobId: string };
+export async function GET(request: NextRequest) {
+  const jobId = request.nextUrl.searchParams.get('jobId');
+  
+  if (!jobId) {
+    return Response.json({ error: 'Missing jobId parameter' }, { status: 400 });
+  }
+
   console.log("Received job status request for job:", jobId);
 
   try {
@@ -35,4 +37,4 @@ export async function GET(
       { status: 500 }
     );
   }
-} 
+}
