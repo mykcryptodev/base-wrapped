@@ -76,6 +76,7 @@ export default Queue(
       
       const analysisCacheKey = `wrapped-2024-analysis/${normalizedAddress}.json`;
       const rawCacheKey = `wrapped-2024-raw/${normalizedAddress}.json`;
+      console.log('rawCacheKey', rawCacheKey);
       let transactions = await getFromS3Cache(rawCacheKey) as Transaction[] | null;
 
       if (!transactions) {
