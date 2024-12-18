@@ -6,13 +6,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:worker": "tsc -P tsconfig.worker.json",
     "start": "next start",
     "worker:build": "tsc -P tsconfig.worker.json",
-    "worker": "node --experimental-specifier-resolution=node --es-module-specifier-resolution=node dist/worker.js",
-    "worker:dev": "NODE_ENV=development nodemon",
-    "lint": "next lint",
-    "start:all": "nf start"
+    "worker:start": "node dist/worker.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.712.0",
