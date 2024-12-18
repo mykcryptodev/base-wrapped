@@ -4,7 +4,6 @@ watchPatterns = ["**/*.ts", "**/*.tsx"]
 
 [deploy]
 startCommand = "npm run start"
-healthcheckPath = "/"
 restartPolicyType = "on_failure"
 
 [deploy.envs]
