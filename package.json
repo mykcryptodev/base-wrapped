@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"next dev\" \"quirrel dev\"",
-    "build": "next build",
+    "build": "next build && [ \"$NODE_ENV\" = \"production\" ] && quirrel ci || exit 0",
     "start": "next start",
     "deploy": "railway up"
   },
