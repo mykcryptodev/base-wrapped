@@ -1,9 +1,9 @@
 import { Queue } from "quirrel/next";
-import { fetchTransactionsFromZapper } from '~/utils/api/zapper.js';
-import { getFromS3Cache, saveToS3Cache } from '~/utils/api/s3';
-import { getAnalysisFromOpenAI } from '~/utils/api/openai';
-import { getUserNotificationDetails } from "~/lib/kv";
-import { sendFrameNotification } from "~/lib/notifs";
+import { fetchTransactionsFromZapper } from '../../utils/api/zapper';
+import { getFromS3Cache, saveToS3Cache } from '../../utils/api/s3';
+import { getAnalysisFromOpenAI } from '../../utils/api/openai';
+import { getUserNotificationDetails } from "../kv";
+import { sendFrameNotification } from "../notifs";
 
 // Define types
 interface JobData {
