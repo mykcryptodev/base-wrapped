@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   const requestBody = requestSchema.safeParse(requestJson);
 
   if (requestBody.success === false) {
-    return Response.json(
+    return NextResponse.json(
       { success: false, errors: requestBody.error.errors },
       { status: 400 }
     );
@@ -32,9 +32,16 @@ export async function POST(request: NextRequest) {
   });
 
   if (sendResult.state === "error") {
-    return Response.json(
+    return NextResponse.json(
       { success: false, error: sendResult.error },
       { status: 500 }
     );
+  } else if (sendResult.state === "rate_limit") {
+    return NextResponse.json(
+      { success: false, error: "Rate limited" },
+      { status: 429 }
+    );
   }
+
+  return NextResponse.json({ success: true });
 }

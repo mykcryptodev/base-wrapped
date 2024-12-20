@@ -1,80 +1,46 @@
-import { NextResponse } from 'next/server';
-import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-import { getFromS3Cache, saveToS3Cache } from '~/utils/api/s3';
+import { NextRequest, NextResponse } from "next/server";
+import { S3 } from "@aws-sdk/client-s3";
 
-// Initialize Lambda client
-const lambda = new LambdaClient({
-  region: "us-east-2",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!
-  }
+const s3 = new S3({
+  region: process.env.AWS_REGION,
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { address, fid } = await request.json();
-    const normalizedAddress = address.toLowerCase();
-    console.log(`Received request for address: ${normalizedAddress}`);
+    const requestJson = await request.json();
+    const address = requestJson.address?.toLowerCase();
 
-    // Check if analysis already exists
-    const analysisKey = `wrapped-2024-analysis/${normalizedAddress}.json`;
-    const analysis = await getFromS3Cache(analysisKey);
-    console.log('Analysis cache check result:', { exists: !!analysis, key: analysisKey });
+    if (!address) {
+      return NextResponse.json(
+        { error: "No address provided" },
+        { status: 400 }
+      );
+    }
 
-    if (analysis) {
-      return NextResponse.json({
-        status: 'complete',
-        jobId: normalizedAddress,
-        step: 3,
+    // Create initial job status
+    const jobStatusKey = `wrapped-2024-raw/${address}.json`;
+    await s3.putObject({
+      Bucket: process.env.S3_BUCKET_NAME!,
+      Key: jobStatusKey,
+      Body: JSON.stringify({
+        address,
+        status: "processing",
+        step: 1,
         totalSteps: 3,
-        message: 'Analysis complete!',
-        result: { analysis }
-      });
-    }
+        message: "Fetching your transactions...",
+        lastUpdated: new Date().toISOString(),
+      }),
+      ContentType: "application/json",
+    });
 
-    // Check if a job is already in progress
-    const jobStatusKey = `job-status/${normalizedAddress}.json`;
-    const existingStatus = await getFromS3Cache(jobStatusKey);
-    
-    if (existingStatus) {
-      console.log('Found existing job status:', existingStatus);
-      return NextResponse.json(existingStatus);
-    }
-
-    // Start a new job
-    const jobStatus = {
-      status: 'processing',
-      jobId: normalizedAddress,
-      step: 1,
-      totalSteps: 3,
-      message: 'Fetching your transaction history...',
-      startedAt: new Date().toISOString(),
-      lastUpdated: new Date().toISOString()
-    };
-
-    // Save initial job status
-    await saveToS3Cache(jobStatusKey, jobStatus);
-    console.log('Saved initial job status:', jobStatus);
-
-    // Start the fetch job asynchronously
-    await lambda.send(new InvokeCommand({
-      FunctionName: process.env.TRANSACTION_FETCHER_LAMBDA!,
-      InvocationType: 'Event',
-      Payload: JSON.stringify({
-        address: normalizedAddress,
-        fid,
-        jobId: normalizedAddress,
-        step: 'fetch'
-      })
-    }));
-
-    console.log('Job started successfully');
-    return NextResponse.json(jobStatus);
+    return NextResponse.json({
+      status: "success",
+      address,
+    });
   } catch (error) {
-    console.error('Error starting job:', error);
+    console.error("Error processing wrapped request:", error);
     return NextResponse.json(
-      { error: 'Failed to start job', details: error instanceof Error ? error.message : String(error) },
+      { error: "Failed to process request" },
       { status: 500 }
     );
   }
