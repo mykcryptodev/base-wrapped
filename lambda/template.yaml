@@ -1,0 +1,126 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+  OpenAIApiKey:
+    Type: String
+    NoEcho: true
+  OpenAIAssistantId:
+    Type: String
+  ZapperApiKey:
+    Type: String
+    NoEcho: true
+  S3BucketName:
+    Type: String
+    Default: basewrapped
+
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    MemorySize: 512
+    Timeout: 900 # 15 minutes
+    Environment:
+      Variables:
+        NODE_ENV: !Ref Environment
+        OPENAI_API_KEY: !Ref OpenAIApiKey
+        OPENAI_ASSISTANT_ID: !Ref OpenAIAssistantId
+        ZAPPER_API_KEY: !Ref ZapperApiKey
+        S3_BUCKET: !Ref S3BucketName
+
+Resources:
+  # IAM Role for Lambda functions
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource: !Sub arn:aws:s3:::${S3BucketName}/*
+
+  # Transaction Fetcher Lambda
+  TransactionFetcherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./dist
+      Handler: functions/transaction-fetcher/index.handler
+      Role: !GetAtt LambdaRole.Arn
+
+  # Analysis Chunker Lambda
+  AnalysisChunkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./dist
+      Handler: functions/analysis-chunker/index.handler
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref S3BucketName
+
+  # Analysis Consolidator Lambda
+  AnalysisConsolidatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./dist
+      Handler: functions/analysis-consolidator/index.handler
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref S3BucketName
+
+  # Lambda Permissions for S3 Events
+  RawDataBucketPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref AnalysisChunkerFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::${S3BucketName}
+
+  ChunksBucketPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref AnalysisConsolidatorFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::${S3BucketName}
+
+  JobStatusBucketPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref TransactionFetcherFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::${S3BucketName}
+
+Outputs:
+  TransactionFetcherArn:
+    Description: ARN of the Transaction Fetcher Lambda function
+    Value: !GetAtt TransactionFetcherFunction.Arn
+  AnalysisChunkerArn:
+    Description: ARN of the Analysis Chunker Lambda function
+    Value: !GetAtt AnalysisChunkerFunction.Arn
+  AnalysisConsolidatorArn:
+    Description: ARN of the Analysis Consolidator Lambda function
+    Value: !GetAtt AnalysisConsolidatorFunction.Arn

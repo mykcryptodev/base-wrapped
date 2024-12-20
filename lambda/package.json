@@ -1,0 +1,20 @@
+{
+  "name": "wrapped-lambda",
+  "version": "1.0.0",
+  "description": "Lambda functions for Base Wrapped",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "yarn clean && tsc && cp package.json dist/ && cd dist && yarn install --production",
+    "package": "sam package --template-file template.yaml",
+    "deploy": "sam deploy --template-file template.yaml --capabilities CAPABILITY_IAM --guided"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "openai": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  }
+}
