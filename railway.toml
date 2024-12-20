@@ -7,7 +7,3 @@ startCommand = "npm run start"
 restartPolicyType = "on_failure"
 
 [deploy.envs]
-QUIRREL_BASE_URL = "${RAILWAY_STATIC_URL}"
-QUIRREL_ENCRYPTION_SECRET = "d6ef0fdbb5e080979f7c7cd1aba67e66325a33b23a26a94ee8aa0277eca30743" # Generate with: openssl rand -hex 16
-QUIRREL_API_URL = "https://your-quirrel-instance.railway.app" # Update with your Quirrel instance
-QUIRREL_TOKEN = "${QUIRREL_TOKEN}" # Get this from your Quirrel instance

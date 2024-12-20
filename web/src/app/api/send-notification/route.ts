@@ -1,10 +1,9 @@
-import { notificationDetailsSchema } from "@farcaster/frame-sdk";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { setUserNotificationDetails } from "~/lib/kv";
+import { notificationDetailsSchema } from "@farcaster/frame-sdk";
 import { sendFrameNotification } from "~/lib/notifs";
+import { setUserNotificationDetails } from "~/lib/kv";
 
-// @ts-expect-error Type instantiation is excessively deep and possibly infinite
 const requestSchema = z.object({
   fid: z.number(),
   notificationDetails: notificationDetailsSchema,
@@ -37,12 +36,5 @@ export async function POST(request: NextRequest) {
       { success: false, error: sendResult.error },
       { status: 500 }
     );
-  } else if (sendResult.state === "rate_limit") {
-    return Response.json(
-      { success: false, error: "Rate limited" },
-      { status: 429 }
-    );
   }
-
-  return Response.json({ success: true });
 }

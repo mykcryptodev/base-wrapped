@@ -45,12 +45,5 @@
   },
   "engines": {
     "node": ">=14"
-  },
-  "overrides": {
-    "quirrel": {
-      "engines": {
-        "node": ">=14"
-      }
-    }
   }
 }
