@@ -4,13 +4,16 @@ import {
   resolveAddress,
   BASENAME_RESOLVER_ADDRESS,
 } from "thirdweb/extensions/ens";
-import { isAddressEqual, zeroAddress } from 'viem';
+import { isAddress, isAddressEqual, zeroAddress } from 'viem';
 
 const thirdwebClient = createThirdwebClient({
   clientId: process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID!,
 });
 
 export async function getAddressFromName(name: string) {
+  if (isAddress(name)) {
+    return name;
+  }
   let resolvedAddress = null;
   // lowercase the name
   name = name?.toLowerCase();

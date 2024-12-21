@@ -203,16 +203,15 @@ export default function Home() {
     }
   }, [resolvedAddress, router]);
 
-  const pollForResults = useCallback(async (address: string, jobId: string, currentAttempts: number = 0) => {
+  const pollForResults = useCallback(async (address: string, currentAttempts: number = 0) => {
     try {
       // Check job status
-      const jobStatus = await getJobStatus(jobId, address);
+      const jobStatus = await getJobStatus(address);
       
       if (jobStatus.status === 'complete') {
         setAnalysis(jobStatus.result?.analysis);
         setLoadingState(null);
         setLoading(false);
-        setCurrentJobId(null);
         return;
       }
 
@@ -227,13 +226,12 @@ export default function Home() {
         pollAttempts: nextAttempt
       });
 
-      // Pass the job ID to the next poll
-      setTimeout(() => pollForResults(address, jobId, nextAttempt), 5000);
+      // Continue polling
+      setTimeout(() => pollForResults(address, nextAttempt), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setLoading(false);
       setLoadingState(null);
-      setCurrentJobId(null);
     }
   }, [setAnalysis, setLoadingState, setLoading, setError]);
 
@@ -243,32 +241,12 @@ export default function Home() {
     setAnalysis(null);
     
     try {
-      // Check if we have a stored job ID for this address
-      if (currentJobId) {
-        // If we have a stored job ID, check its status first
-        const jobStatus = await getJobStatus(currentJobId, address);
-        if (jobStatus.status !== 'error') {
-          setLoadingState({
-            status: jobStatus.status,
-            message: jobStatus.message || 'Processing...',
-            step: jobStatus.step || 1,
-            totalSteps: jobStatus.totalSteps || 3,
-            progress: jobStatus.progress
-          });
-          
-          // If job is still processing, start polling
-          pollForResults(address, currentJobId, 0);
-          return;
-        }
-      }
-
       // Start a new analysis
       const data = await analyzeWrapped(address);
       if (data.error) {
         throw new Error(data.error);
       }
 
-      setCurrentJobId(data.jobId);
       setLoadingState({
         status: data.status,
         message: data.message || 'Processing...',
@@ -276,15 +254,14 @@ export default function Home() {
         totalSteps: data.totalSteps || 3
       });
       
-      // Start polling if not complete
-      pollForResults(address, data.jobId, 0);
+      // Start polling
+      pollForResults(address, 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setLoading(false);
       setLoadingState(null);
-      setCurrentJobId(null);
     }
-  }, [currentJobId, pollForResults]);
+  }, [pollForResults]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

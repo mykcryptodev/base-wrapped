@@ -44,33 +44,21 @@ export async function analyzeWrapped(address: string, pollAttempts: number = 0) 
   }
 }
 
-export async function getJobStatus(jobId: string, address: string) {
-  try {
-    // Get the host from headers
-    const headersList = await headers();
-    const host = headersList.get('host');
-    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-    const baseUrl = `${protocol}://${host}`;
-    
-    console.log('Fetching job status from:', `${baseUrl}/api/job-status?jobId=${jobId}&address=${address}`);
-
-    const response = await fetch(`${baseUrl}/api/job-status?jobId=${jobId}&address=${address}`, {
+export async function getJobStatus(address: string) {
+  console.log('Fetching job status from:', `${process.env.NEXT_PUBLIC_APP_URL}/api/job-status?address=${address}`);
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_APP_URL}/api/job-status?address=${address}`,
+    {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-      // Add next config to handle server-side fetch
-      next: { revalidate: 0 }
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to get job status');
     }
+  );
 
-    return await response.json();
-  } catch (error) {
-    console.error('Error getting job status:', error);
-    throw error;
+  if (!response.ok) {
+    throw new Error('Failed to fetch job status');
   }
+
+  return response.json();
 } 

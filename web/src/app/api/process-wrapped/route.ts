@@ -24,10 +24,7 @@ export async function POST(request: NextRequest) {
       Key: jobStatusKey,
       Body: JSON.stringify({
         address,
-        status: "processing",
-        step: 1,
-        totalSteps: 3,
-        message: "Fetching your transactions...",
+        transactions: [],
         lastUpdated: new Date().toISOString(),
       }),
       ContentType: "application/json",
