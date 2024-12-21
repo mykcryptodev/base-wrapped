@@ -3,8 +3,12 @@ import Home from "~/components/Home";
 
 const appUrl = process.env.APP_URL;
 
-export async function generateMetadata({ searchParams }: { searchParams: { a?: string } }): Promise<Metadata> {
-  const address = await searchParams?.a || 'opengraph-image';
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}): Promise<Metadata> {
+  const address = typeof searchParams.a === 'string' ? searchParams.a : 'opengraph-image';
   
   const frame = {
     version: "next",
