@@ -67,7 +67,7 @@ export const handler: Handler<AnalysisConsolidatorEvent, AnalysisConsolidatorRes
         }
       });
       return acc;
-    }, {} as Record<string, any[]>);
+    }, {} as Record<string, unknown[]>);
 
     // Create a new thread for final consolidation
     const thread = await openai.beta.threads.create();

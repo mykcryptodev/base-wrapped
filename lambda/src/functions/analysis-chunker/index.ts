@@ -63,7 +63,7 @@ export const handler: Handler<AnalysisChunkerEvent, AnalysisChunkerResponse> = a
       // Regular chunk file
       if (!isLastChunk) {
         const chunkKey = `wrapped-2024-analysis-chunks/${address.toLowerCase()}-${i}.json`;
-        const analysis = await getAnalysisFromOpenAI(chunk, address);
+        const analysis = await getAnalysisFromOpenAI(chunk);
         
         await s3.putObject({
           Bucket: bucket,
@@ -78,7 +78,7 @@ export const handler: Handler<AnalysisChunkerEvent, AnalysisChunkerResponse> = a
       // Last chunk becomes the final marker
       else {
         const finalKey = `wrapped-2024-analysis-chunks/${address.toLowerCase()}-final.json`;
-        const analysis = await getAnalysisFromOpenAI(chunk, address);
+        const analysis = await getAnalysisFromOpenAI(chunk);
         
         await s3.putObject({
           Bucket: bucket,

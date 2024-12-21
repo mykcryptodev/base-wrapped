@@ -71,7 +71,7 @@ async function analyzeTransactionChunk(chunk: unknown, index: number, totalChunk
   }
 }
 
-export async function getAnalysisFromOpenAI(transactions: unknown, address: string) {
+export async function getAnalysisFromOpenAI(transactions: unknown) {
   console.log(`
     
     
@@ -85,7 +85,6 @@ export async function getAnalysisFromOpenAI(transactions: unknown, address: stri
   try {
     // Chunk the transactions
     const chunks = chunkTransactions(transactions as unknown[]);
-    const normalizedAddress = address?.toLowerCase();
 
     // Process chunks in parallel with separate threads
     const chunkPromises = chunks.map((chunk, index) => 

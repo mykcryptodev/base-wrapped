@@ -20,16 +20,20 @@ export async function GET(request: NextRequest) {
     // Check if analysis exists
     const analysisKey = `wrapped-2024-analysis/${address.toLowerCase()}.json`;
     try {
-      await s3.headObject({
+      const analysisResponse = await s3.getObject({
         Bucket: process.env.S3_BUCKET_NAME!,
         Key: analysisKey,
       });
+      
+      const analysis = JSON.parse(await analysisResponse.Body!.transformToString());
+      
       return NextResponse.json({
         status: "complete",
         step: 3,
         totalSteps: 3,
         message: "Analysis complete!",
         lastUpdated: new Date().toISOString(),
+        result: { analysis }
       });
     } catch (error) {
       // Analysis doesn't exist, continue checking raw data
@@ -51,7 +55,7 @@ export async function GET(request: NextRequest) {
         lastUpdated: new Date().toISOString(),
       });
     } catch (error) {
-      console.error("Error saving raw data:", error);
+      console.error("Error checking raw data:", error);
       // Raw data doesn't exist, return fetching status
       return NextResponse.json({
         status: "processing",
