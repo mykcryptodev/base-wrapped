@@ -2,7 +2,6 @@
 
 import { isAddress, zeroAddress, isAddressEqual } from "viem";
 import { getAddressFromName } from "~/lib/getAddressFromName";
-import { headers } from 'next/headers';
 
 export async function analyzeWrapped(address: string, pollAttempts: number = 0) {
   // Validate address

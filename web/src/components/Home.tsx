@@ -173,7 +173,6 @@ export default function Home() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [error, setError] = useState('');
   const [pollAttempts] = useState(0);
-  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
 
   useEffect(() => {
     try {
