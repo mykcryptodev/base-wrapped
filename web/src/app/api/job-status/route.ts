@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       });
     } catch (error) {
       // If analysis file doesn't exist, check job status
-      if (error instanceof NotFound || (error as any)?.name === 'NoSuchKey') {
+      if (error instanceof NotFound || (error as Error)?.name === 'NoSuchKey') {
         // Check job status
         const jobStatusKey = `job-status/${address}.json`;
         try {
