@@ -48,7 +48,7 @@ export const handler: Handler<AnalysisConsolidatorEvent, AnalysisConsolidatorRes
     // Get the address from the S3 key (remove prefix and -final.json suffix)
     const key = event.Records[0].s3.object.key;
     const bucket = event.Records[0].s3.bucket.name;
-    const address = key.replace('wrapped-2024-analysis-chunks/', '').replace('-final.json', '');
+    const address = key.replace('wrapped-2024-analysis-chunks/', '').replace('-final.json', '').toLowerCase();
     const jobId = address;
 
     console.log(`Starting analysis consolidation for jobId: ${jobId}, address: ${address}`);
@@ -83,7 +83,7 @@ export const handler: Handler<AnalysisConsolidatorEvent, AnalysisConsolidatorRes
     const finalAnalysis = await getAnalysisFromOpenAI(allTransactions);
 
     // Write final analysis to S3
-    const finalAnalysisKey = `wrapped-2024-final/${address}.json`;
+    const finalAnalysisKey = `wrapped-2024-analysis/${address}.json`;
     await s3.putObject({
       Bucket: process.env.S3_BUCKET!,
       Key: finalAnalysisKey,
@@ -107,7 +107,8 @@ export const handler: Handler<AnalysisConsolidatorEvent, AnalysisConsolidatorRes
   } catch (error) {
     const address = event.Records[0].s3.object.key
       .replace('wrapped-2024-analysis-chunks/', '')
-      .replace('-final.json', '');
+      .replace('-final.json', '')
+      .toLowerCase();
     await updateJobStatus(event.Records[0].s3.bucket.name, address, 'ERROR', error instanceof Error ? error.message : 'Unknown error occurred');
     
     console.error('Error in analysis consolidator:', error);

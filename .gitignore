@@ -49,5 +49,3 @@ lambda/dist/
 lambda/.build/
 lambda/coverage/
 lambda/*.zip
-
-notification.json
