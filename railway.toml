@@ -1,9 +1,0 @@
-[build]
-builder = "nixpacks"
-watchPatterns = ["**/*.ts", "**/*.tsx"]
-
-[deploy]
-startCommand = "npm run start"
-restartPolicyType = "on_failure"
-
-[deploy.envs]

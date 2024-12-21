@@ -44,9 +44,9 @@ export async function analyzeWrapped(address: string, pollAttempts: number = 0) 
 }
 
 export async function getJobStatus(address: string) {
-  console.log('Fetching job status from:', `${process.env.NEXT_PUBLIC_APP_URL}/api/job-status?address=${address}`);
+  console.log('Fetching job status from:', `${process.env.APP_URL}/api/job-status?address=${address}`);
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/job-status?address=${address}`,
+    `${process.env.APP_URL}/api/job-status?address=${address}`,
     {
       method: 'GET',
       headers: {
