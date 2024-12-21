@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCards } from 'swiper/modules';
 import { analyzeWrapped, getJobStatus } from '~/app/actions';
@@ -173,6 +173,7 @@ export default function Home() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [error, setError] = useState('');
   const [pollAttempts] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
@@ -430,6 +431,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row gap-4 max-w-xl mx-auto items-start items-stretch">
             <div className="flex-1 relative">
               <input
+                ref={inputRef}
                 type="text"
                 value={inputAddress}
                 onChange={(e) => {
@@ -455,15 +457,20 @@ export default function Home() {
               {inputAddress && (
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     // clear the search params
                     const url = new URL(window.location.href);
                     url.searchParams.delete('a');
                     router.replace(url.pathname + url.search);
+                    // wait 200ms
+                    await new Promise(resolve => setTimeout(resolve, 200));
                     setInputAddress("" as `0x${string}`);
                     setResolvedAddress(undefined);
                     setAnalysis(null);
                     setError('');
+                    if (inputRef.current) {
+                      inputRef.current.value = '';
+                    }
                   }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-gray-100 rounded-full px-3 py-1"
                 >
