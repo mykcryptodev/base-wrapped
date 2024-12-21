@@ -150,7 +150,7 @@ function Card({ item, address }: { item: CardItem, address?: `0x${string}` }) {
 }
 
 interface LoadingState {
-  status: 'fetching' | 'analyzing' | 'complete';
+  status: 'fetching' | 'analyzing' | 'complete' | 'error' | 'processing';
   message: string;
   step: number;
   totalSteps: number;
@@ -159,6 +159,7 @@ interface LoadingState {
     total: number;
   };
   pollAttempts?: number;
+  error?: string;
 }
 
 export default function Home() {
@@ -203,6 +204,22 @@ export default function Home() {
     }
   }, [resolvedAddress, router]);
 
+  const clearAddress = async () => {
+    // clear the search params
+    const url = new URL(window.location.href);
+    url.searchParams.delete('a');
+    router.replace(url.pathname + url.search);
+    // wait 200ms
+    await new Promise(resolve => setTimeout(resolve, 200));
+    setInputAddress("" as `0x${string}`);
+    setResolvedAddress(undefined);
+    setAnalysis(null);
+    setError('');
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  }
+
   const pollForResults = useCallback(async (address: string, currentAttempts: number = 0) => {
     try {
       // Check job status
@@ -211,6 +228,19 @@ export default function Home() {
       if (jobStatus.status === 'complete') {
         setAnalysis(jobStatus.result?.analysis);
         setLoadingState(null);
+        setLoading(false);
+        return;
+      }
+
+      if (jobStatus.status === 'error') {
+        setLoadingState({
+          status: 'error',
+          message: jobStatus.error || 'An error occurred',
+          error: jobStatus.error,
+          step: 1,
+          totalSteps: 3,
+          pollAttempts: currentAttempts
+        });
         setLoading(false);
         return;
       }
@@ -240,6 +270,15 @@ export default function Home() {
     setError('');
     setAnalysis(null);
     
+    // Set initial loading state immediately
+    setLoadingState({
+      status: 'processing',
+      message: 'Starting analysis...',
+      step: 1,
+      totalSteps: 3,
+      pollAttempts: 0
+    });
+    
     try {
       // Start a new analysis
       const data = await analyzeWrapped(address);
@@ -251,7 +290,8 @@ export default function Home() {
         status: data.status,
         message: data.message || 'Processing...',
         step: data.step || 1,
-        totalSteps: data.totalSteps || 3
+        totalSteps: data.totalSteps || 3,
+        pollAttempts: 0
       });
       
       // Start polling
@@ -275,10 +315,39 @@ export default function Home() {
   };
 
   function LoadingCard() {
-    // Assume it takes 10 poll intervals to complete
+    // If there's an error in the loading state, show it
+    if (loadingState?.status === "error") {
+      return (
+        <div className="analysis-card h-[400px] flex flex-col items-center justify-center text-center px-8">
+          <div className="mb-8">
+            <div className="w-16 h-16 text-4xl">🤔</div>
+          </div>
+          <h2 className="text-2xl font-bold mb-4 text-gray-800">
+            {loadingState.error}
+          </h2>
+          <p className="text-gray-600 mb-4">
+            {loadingState.error === "No transactions found"
+              ? "We couldn't find any transactions for this address on Base. Try another address!"
+              : "There was an error analyzing this address. Please try again later."}
+          </p>
+          <button
+            onClick={() => {
+              // Clear the error state
+              setLoadingState(null);
+              setLoading(false);
+              setError("");
+              clearAddress();
+            }}
+            className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+          >
+            Try Another Address
+          </button>
+        </div>
+      );
+    }
+
+    // Normal loading state
     const TOTAL_EXPECTED_POLLS = 10;
-    
-    // Calculate progress based on poll attempts
     const progressPercentage = Math.min(((loadingState?.pollAttempts || 0) / TOTAL_EXPECTED_POLLS) * 100, 95);
     
     return (
@@ -452,21 +521,7 @@ export default function Home() {
               {inputAddress && (
                 <button
                   type="button"
-                  onClick={async () => {
-                    // clear the search params
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete('a');
-                    router.replace(url.pathname + url.search);
-                    // wait 200ms
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    setInputAddress("" as `0x${string}`);
-                    setResolvedAddress(undefined);
-                    setAnalysis(null);
-                    setError('');
-                    if (inputRef.current) {
-                      inputRef.current.value = '';
-                    }
-                  }}
+                  onClick={() => clearAddress()}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-gray-100 rounded-full px-3 py-1"
                 >
                   ✕
@@ -504,7 +559,7 @@ export default function Home() {
         )}
 
         <div className="max-w-md mx-auto">
-          {loading && !analysis && (
+          {loadingState && !analysis && (
             <LoadingCard />
           )}
 
