@@ -516,7 +516,7 @@ export default function Home() {
                 spellCheck="false"
                 data-form-type="other"
                 disabled={loading}
-                className="w-full p-4 border rounded-xl text-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-50"
+                className="w-full p-4 pr-14 border rounded-xl text-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-50"
               />
               {inputAddress && (
                 <button
