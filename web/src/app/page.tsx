@@ -3,10 +3,10 @@ import Home from "~/components/Home";
 
 const appUrl = process.env.APP_URL;
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ searchParams }: { searchParams: { a?: string } }): Promise<Metadata> {
   const frame = {
     version: "next",
-    imageUrl: `${appUrl}/frames/hello/opengraph-image`,
+    imageUrl: `${appUrl}/frames/hello/${searchParams?.a || 'opengraph-image'}`,
     button: {
       title: "Launch Frame",
       action: {
