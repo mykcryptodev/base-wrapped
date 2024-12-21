@@ -1,110 +1,117 @@
 import { Handler } from 'aws-lambda';
 import { S3 } from '@aws-sdk/client-s3';
-import { getAnalysisFromOpenAI } from '../../utils/api/openai';
+import { OpenAI } from 'openai';
 
+// Initialize S3 client
 const s3 = new S3({
   region: 'us-east-2'
 });
 
 export interface AnalysisChunkerEvent {
-  Records: [{
+  Records: {
     s3: {
-      bucket: { name: string };
-      object: { key: string };
+      bucket: {
+        name: string;
+      };
+      object: {
+        key: string;
+      };
     };
-  }];
+  }[];
 }
 
 export interface AnalysisChunkerResponse {
   status: 'success' | 'error';
   jobId: string;
-  chunkResults?: string[];  // S3 keys for chunk results
+  s3Key?: string;
   error?: string;
 }
 
-// Function to chunk transactions
-function chunkTransactions(transactions: unknown[], chunkSize = 200) {
-  const chunks = [];
-  for (let i = 0; i < transactions.length; i += chunkSize) {
-    chunks.push(transactions.slice(i, i + chunkSize));
-  }
-  return chunks;
+async function updateJobStatus(bucket: string, address: string, status: string, error?: string) {
+  const jobStatusKey = `job-status/${address}.json`;
+  await s3.putObject({
+    Bucket: bucket,
+    Key: jobStatusKey,
+    Body: JSON.stringify({
+      address,
+      jobId: address,
+      status,
+      error,
+      lastUpdated: new Date().toISOString(),
+    }),
+    ContentType: 'application/json'
+  });
 }
 
 export const handler: Handler<AnalysisChunkerEvent, AnalysisChunkerResponse> = async (event) => {
   try {
-    // Get raw transactions file info from S3 event
+    // Get the address from the S3 key (remove prefix and -data.json suffix)
+    const key = event.Records[0].s3.object.key;
     const bucket = event.Records[0].s3.bucket.name;
-    const rawTransactionsS3Key = event.Records[0].s3.object.key;
-    
-    // Extract address from the key (format: wrapped-2024-raw/{address}.json)
-    const address = rawTransactionsS3Key.split('/')[1].replace('.json', '');
-    const jobId = address; // Using address as job ID
-    
-    console.log(`Starting analysis chunking for jobId: ${jobId}, address: ${address}`);
+    const address = key.replace('wrapped-2024-raw/', '').replace('-data.json', '');
+    const jobId = address;
 
-    // Get raw transactions from S3
-    const rawData = await s3.getObject({
-      Bucket: bucket,
-      Key: rawTransactionsS3Key
+    console.log(`Starting analysis chunking for jobId: ${jobId}, address: ${address}`);
+    await updateJobStatus(bucket, address, 'CHUNKING_TRANSACTIONS');
+
+    // Get the raw data from S3
+    const rawDataResponse = await s3.getObject({
+      Bucket: process.env.S3_BUCKET!,
+      Key: key
     });
 
-    const transactions = JSON.parse(await rawData.Body!.transformToString());
-    const chunks = chunkTransactions(transactions, 200);
-    const chunkResults: string[] = [];
+    const rawData = JSON.parse(await rawDataResponse.Body!.transformToString());
+    const transactions = rawData;
+
+    // Process transactions in chunks
+    const chunkSize = 100;
+    const chunks = [];
+    for (let i = 0; i < transactions.length; i += chunkSize) {
+      const chunk = transactions.slice(i, i + chunkSize);
+      chunks.push(chunk);
+    }
 
     console.log(`Processing ${chunks.length} chunks for analysis`);
 
-    // Process each chunk with OpenAI
+    // Write each chunk to S3
     for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      const isLastChunk = i === chunks.length - 1;
-      
-      // Regular chunk file
-      if (!isLastChunk) {
-        const chunkKey = `wrapped-2024-analysis-chunks/${address.toLowerCase()}-${i}.json`;
-        const analysis = await getAnalysisFromOpenAI(chunk);
-        
-        await s3.putObject({
-          Bucket: bucket,
-          Key: chunkKey,
-          Body: JSON.stringify(analysis),
-          ContentType: 'application/json'
-        });
-        
-        chunkResults.push(chunkKey);
-        console.log(`Completed analysis for chunk ${i + 1}/${chunks.length}`);
-      } 
-      // Last chunk becomes the final marker
-      else {
-        const finalKey = `wrapped-2024-analysis-chunks/${address.toLowerCase()}-final.json`;
-        const analysis = await getAnalysisFromOpenAI(chunk);
-        
-        await s3.putObject({
-          Bucket: bucket,
-          Key: finalKey,
-          Body: JSON.stringify({
-            jobId,
-            address: address.toLowerCase(),
-            totalChunks: chunks.length,
-            chunkKeys: [...chunkResults, finalKey],
-            completedAt: new Date().toISOString(),
-            analysis
-          }),
-          ContentType: 'application/json'
-        });
-        
-        chunkResults.push(finalKey);
-        console.log(`Completed final chunk and wrote marker`);
-      }
+      const chunkKey = `wrapped-2024-analysis-chunks/${address}-chunk-${i}.json`;
+      await s3.putObject({
+        Bucket: process.env.S3_BUCKET!,
+        Key: chunkKey,
+        Body: JSON.stringify(chunks[i]),
+        ContentType: 'application/json'
+      });
+      await updateJobStatus(bucket, address, 'CHUNKING_TRANSACTIONS', `Processed ${i + 1}/${chunks.length} chunks`);
     }
+
+    // Write final marker file
+    const finalKey = `wrapped-2024-analysis-chunks/${address}-final.json`;
+    await s3.putObject({
+      Bucket: process.env.S3_BUCKET!,
+      Key: finalKey,
+      Body: JSON.stringify({
+        jobId,
+        address,
+        totalChunks: chunks.length,
+        chunkKeys: chunks.map((_, i) => `wrapped-2024-analysis-chunks/${address}-chunk-${i}.json`)
+      }),
+      ContentType: 'application/json'
+    });
+
+    await updateJobStatus(bucket, address, 'CHUNKS_READY');
 
     return {
       status: 'success',
       jobId,
-      chunkResults
+      s3Key: finalKey
     };
   } catch (error) {
+    const address = event.Records[0].s3.object.key
+      .replace('wrapped-2024-raw/', '')
+      .replace('-data.json', '');
+    await updateJobStatus(event.Records[0].s3.bucket.name, address, 'ERROR', error instanceof Error ? error.message : 'Unknown error occurred');
+    
     console.error('Error in analysis chunker:', error);
     return {
       status: 'error',

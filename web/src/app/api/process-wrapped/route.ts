@@ -18,13 +18,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Create initial job status
-    const jobStatusKey = `wrapped-2024-raw/${address}.json`;
+    const jobStatusKey = `wrapped-2024-raw/${address}-init.json`;
     await s3.putObject({
       Bucket: process.env.S3_BUCKET_NAME!,
       Key: jobStatusKey,
       Body: JSON.stringify({
         address,
-        transactions: [],
+        jobId: address,
         lastUpdated: new Date().toISOString(),
       }),
       ContentType: "application/json",

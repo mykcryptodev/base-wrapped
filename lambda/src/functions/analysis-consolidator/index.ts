@@ -1,121 +1,115 @@
 import { Handler } from 'aws-lambda';
 import { S3 } from '@aws-sdk/client-s3';
-import OpenAI from 'openai';
+import { getAnalysisFromOpenAI } from '../../utils/api/openai';
 
+// Initialize S3 client
 const s3 = new S3({
   region: 'us-east-2'
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
 export interface AnalysisConsolidatorEvent {
-  Records: [{
+  Records: {
     s3: {
-      bucket: { name: string };
-      object: { key: string };
+      bucket: {
+        name: string;
+      };
+      object: {
+        key: string;
+      };
     };
-  }];
+  }[];
 }
 
 export interface AnalysisConsolidatorResponse {
   status: 'success' | 'error';
   jobId: string;
-  finalAnalysisKey?: string;
+  s3Key?: string;
   error?: string;
+}
+
+async function updateJobStatus(bucket: string, address: string, status: string, error?: string) {
+  const jobStatusKey = `job-status/${address}.json`;
+  await s3.putObject({
+    Bucket: bucket,
+    Key: jobStatusKey,
+    Body: JSON.stringify({
+      address,
+      jobId: address,
+      status,
+      error,
+      lastUpdated: new Date().toISOString(),
+    }),
+    ContentType: 'application/json'
+  });
 }
 
 export const handler: Handler<AnalysisConsolidatorEvent, AnalysisConsolidatorResponse> = async (event) => {
   try {
-    // Get the final marker file info from S3 event
+    // Get the address from the S3 key (remove prefix and -final.json suffix)
+    const key = event.Records[0].s3.object.key;
     const bucket = event.Records[0].s3.bucket.name;
-    const finalChunkKey = event.Records[0].s3.object.key;
-    
-    console.log('Processing final chunk:', finalChunkKey);
+    const address = key.replace('wrapped-2024-analysis-chunks/', '').replace('-final.json', '');
+    const jobId = address;
 
-    // Read the final chunk file which contains metadata and the last chunk's analysis
-    const finalChunkData = await s3.getObject({
-      Bucket: bucket,
-      Key: finalChunkKey
-    });
-    
-    const { jobId, address, chunkKeys, analysis: lastChunkAnalysis } = JSON.parse(
-      await finalChunkData.Body!.transformToString()
-    );
-    
-    const finalAnalysisKey = `wrapped-2024-analysis/${address.toLowerCase()}.json`;
     console.log(`Starting analysis consolidation for jobId: ${jobId}, address: ${address}`);
+    await updateJobStatus(bucket, address, 'CONSOLIDATING_ANALYSIS');
 
-    // Fetch all previous chunk results from S3 (excluding the final chunk)
-    const previousChunkResults = await Promise.all(
-      chunkKeys.slice(0, -1).map(async (key: string) => {
-        const data = await s3.getObject({
-          Bucket: bucket,
-          Key: key
-        });
-        return JSON.parse(await data.Body!.transformToString());
-      })
-    );
+    // Get the final marker file
+    const finalMarkerResponse = await s3.getObject({
+      Bucket: process.env.S3_BUCKET!,
+      Key: key
+    });
 
-    // Combine all chunk results including the last chunk's analysis
-    const combinedAnalysis = [...previousChunkResults, lastChunkAnalysis].reduce((acc, curr) => {
-      ['popularTokens', 'popularActions', 'popularUsers', 'otherStories'].forEach(category => {
-        if (curr[category]) {
-          if (!acc[category]) acc[category] = [];
-          acc[category] = [...acc[category], ...curr[category]];
-        }
+    const finalMarker = JSON.parse(await finalMarkerResponse.Body!.transformToString());
+    const { chunkKeys } = finalMarker;
+
+    console.log(`Processing ${chunkKeys.length} chunks for consolidation`);
+
+    // Get all chunk data
+    const chunks = [];
+    for (let i = 0; i < chunkKeys.length; i++) {
+      const chunkKey = chunkKeys[i];
+      const chunkResponse = await s3.getObject({
+        Bucket: process.env.S3_BUCKET!,
+        Key: chunkKey
       });
-      return acc;
-    }, {} as Record<string, unknown[]>);
-
-    // Create a new thread for final consolidation
-    const thread = await openai.beta.threads.create();
-
-    // Send combined analysis for final consolidation
-    await openai.beta.threads.messages.create(thread.id, {
-      role: "user",
-      content: `Please provide a final consolidated analysis, removing any duplicates and keeping only the most significant items in each category. Here's all the data: ${JSON.stringify(combinedAnalysis)}`
-    });
-
-    const run = await openai.beta.threads.runs.create(thread.id, {
-      assistant_id: process.env.OPENAI_ASSISTANT_ID!,
-    });
-
-    // Wait for completion
-    let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-    while (runStatus.status !== 'completed') {
-      if (runStatus.status === 'failed') {
-        throw new Error('Final analysis run failed');
-      }
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      const chunk = JSON.parse(await chunkResponse.Body!.transformToString());
+      chunks.push(chunk);
+      await updateJobStatus(bucket, address, 'CONSOLIDATING_ANALYSIS', `Processed ${i + 1}/${chunkKeys.length} chunks`);
     }
 
-    // Get final analysis
-    const messages = await openai.beta.threads.messages.list(thread.id);
-    const finalMessage = messages.data[0];
-    const finalAnalysis = JSON.parse(
-      finalMessage.content[0].type === 'text' ? finalMessage.content[0].text.value : '{}'
-    );
+    // Consolidate all chunks into one analysis
+    const allTransactions = chunks.flat();
+    const finalAnalysis = await getAnalysisFromOpenAI(allTransactions);
 
-    // Store final analysis in S3
+    // Write final analysis to S3
+    const finalAnalysisKey = `wrapped-2024-final/${address}.json`;
     await s3.putObject({
-      Bucket: bucket,
+      Bucket: process.env.S3_BUCKET!,
       Key: finalAnalysisKey,
-      Body: JSON.stringify(finalAnalysis),
+      Body: JSON.stringify({
+        jobId,
+        address,
+        analysis: finalAnalysis,
+        completedAt: new Date().toISOString()
+      }),
       ContentType: 'application/json'
     });
 
-    // Clean up the thread
-    await openai.beta.threads.del(thread.id);
+    await updateJobStatus(bucket, address, 'COMPLETED');
+    console.log(`Successfully consolidated analysis for ${address}`);
 
     return {
       status: 'success',
       jobId,
-      finalAnalysisKey
+      s3Key: finalAnalysisKey
     };
   } catch (error) {
+    const address = event.Records[0].s3.object.key
+      .replace('wrapped-2024-analysis-chunks/', '')
+      .replace('-final.json', '');
+    await updateJobStatus(event.Records[0].s3.bucket.name, address, 'ERROR', error instanceof Error ? error.message : 'Unknown error occurred');
+    
     console.error('Error in analysis consolidator:', error);
     return {
       status: 'error',
