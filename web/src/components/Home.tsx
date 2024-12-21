@@ -275,13 +275,11 @@ export default function Home() {
   };
 
   function LoadingCard() {
-    const progress = loadingState?.progress;
+    // Assume it takes 10 poll intervals to complete
+    const TOTAL_EXPECTED_POLLS = 10;
     
-    // Calculate the overall progress percentage
-    const progressPercentage = progress 
-      ? ((loadingState?.step - 1) / loadingState?.totalSteps * 100) + 
-        (progress.current / progress.total * (100 / loadingState?.totalSteps))
-      : ((loadingState?.step || 0) / (loadingState?.totalSteps || 1) * 100);
+    // Calculate progress based on poll attempts
+    const progressPercentage = Math.min(((loadingState?.pollAttempts || 0) / TOTAL_EXPECTED_POLLS) * 100, 95);
     
     return (
       <div className="analysis-card h-[400px] flex flex-col items-center justify-center text-center px-8">
@@ -297,9 +295,6 @@ export default function Home() {
             style={{ width: `${progressPercentage}%` }}
           ></div>
         </div>
-        <p className="text-gray-600 mb-4">
-          Step {loadingState?.step} of {loadingState?.totalSteps}
-        </p>
         {pollAttempts > 0 && (
           <p className="text-sm text-gray-500 mt-2">
             You can leave this page and come back later. Your results will be ready when you return.
