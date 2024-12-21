@@ -20,7 +20,7 @@ export async function generateMetadata({
       action: {
         type: "launch_frame",
         name: "Base Wrapped 2024",
-        url: `${appUrl}/`,
+        url: `${appUrl}?a=${typeof sParams?.a === 'string' ? sParams.a} : ""`,
         splashImageUrl: `${appUrl}/splash.png`,
         splashBackgroundColor: "#f7f7f7",
       },
