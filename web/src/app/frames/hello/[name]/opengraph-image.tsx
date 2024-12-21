@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { getName } from "@paperclip-labs/whisk-sdk/identity/core";
+import { getAvatar, getName } from "@paperclip-labs/whisk-sdk/identity/core";
 import { isAddress } from "viem";
 
 export const runtime = "edge";
@@ -20,6 +20,11 @@ interface Props {
 
 export default async function Image({ params }: Props) {
   const { name } = params;
+  const avatar = await getAvatar("", { 
+    address: name, 
+    resolvers: ["base", "ens", "farcaster", "uni", "nns"] 
+  });
+
   let resolvedName = await getName("", { 
     address: name, 
     resolvers: ["base", "ens", "farcaster", "uni", "nns"] 
@@ -69,6 +74,26 @@ export default async function Image({ params }: Props) {
         >
           Base Wrapped 2024
         </h1>
+        {avatar && 
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '100%',
+            overflow: 'hidden',
+          }}
+        >
+          <img 
+            src={avatar} 
+            alt="Avatar" 
+            width="72px" 
+            height="72px" 
+            style={{
+              borderRadius: '100%',
+            }}
+          />
+        </div>}
         <p
           style={{
             display: 'flex',
