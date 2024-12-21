@@ -44,13 +44,13 @@ function getAnalyzingMessage(pollAttempts: number, chunkProgress?: { currentChun
     return "The numbers are crunching, stay tuned...";
   }
   if (pollAttempts > 10) {
-    return "You've been really active on Base! Still analyzing...";
+    return "Mint anything cool lately? Still analyzing...";
   }
   if (pollAttempts > 8) {
     return "Our AI is fascinated by your transaction history! Still analyzing...";
   }
   if (pollAttempts > 6) {
-    return "There's a lot to analyze here! The AI is working hard...";
+    return "There's a lot to analyze here... You've done quite a bit on Base!";
   }
   if (pollAttempts > 4) {
     return "Still crunching the numbers... You've had an interesting year!";
