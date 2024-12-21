@@ -205,7 +205,7 @@ export default function Home() {
   const pollForResults = useCallback(async (address: string, currentAttempts: number = 0) => {
     try {
       // Check job status
-      const jobStatus = await getJobStatus(address);
+      const jobStatus = await getJobStatus(address, currentAttempts);
       
       if (jobStatus.status === 'complete') {
         setAnalysis(jobStatus.result?.analysis);
