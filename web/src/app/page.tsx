@@ -1,16 +1,16 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Metadata } from "next";
 import Home from "~/components/Home";
 
 const appUrl = process.env.APP_URL;
 
-type PageProps = {
-  searchParams?: { [key: string]: string | string[] | undefined };
-};
-
-export async function generateMetadata(
-  { searchParams }: PageProps
-): Promise<Metadata> {
-  const address = typeof searchParams?.a === 'string' ? searchParams.a : 'opengraph-image';
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<any>;
+}): Promise<Metadata> {
+  const sParams = await searchParams;
+  const address = typeof sParams?.a === 'string' ? sParams.a : 'opengraph-image';
   
   const frame = {
     version: "next",
