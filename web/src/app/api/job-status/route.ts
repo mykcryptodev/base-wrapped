@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
       });
     } catch (error) {
       // Analysis doesn't exist, continue checking raw data
+      console.error("Error checking analysis:", error);
     }
 
     // Check if raw data exists
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
         lastUpdated: new Date().toISOString(),
       });
     } catch (error) {
+      console.error("Error saving raw data:", error);
       // Raw data doesn't exist, return fetching status
       return NextResponse.json({
         status: "processing",
